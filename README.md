@@ -11,7 +11,7 @@ http://wiki.ros.org/ROS/Tutorials/WritingPublisherSubscriber%28c%2B%2B%29
 ## Workflow
 
 ### 1. specify which files to compile in the CMakeLists.txt
-$ rosed beginner_tutorials CMakeLists.txt 
+``$ rosed beginner_tutorials CMakeLists.txt ``
 
 > 
 Example (insert at the bottom):
