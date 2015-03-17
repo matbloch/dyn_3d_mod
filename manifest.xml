@@ -1,0 +1,18 @@
+<package>
+  <description brief="dyn_3d_mod">
+
+     dyn_3d_mod
+
+  </description>
+  <author>mat</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/dyn_3d_mod</url>
+  <depend package="std_msgs"/>
+  <depend package="roscpp"/>
+  <depend package="sensor_msgs"/>
+  <depend package="cv_bridge"/>
+
+</package>
+
+
