@@ -7,3 +7,30 @@ http://wiki.ros.org/ROS/Tutorials
 
 ### ROS message subscriber
 http://wiki.ros.org/ROS/Tutorials/WritingPublisherSubscriber%28c%2B%2B%29
+
+## Workflow
+
+### 1. specify which files to compile in the CMakeLists.txt
+$ rosed beginner_tutorials CMakeLists.txt 
+
+> 
+Example (insert at the bottom):
+```
+rosbuild_add_executable(hello src/hello.cpp)
+```
+
+### 2. Compile
+
+``$ make``
+
+### 3. Execute
+``$ rosrun dyn_3d_mod hello``
+
+
+## ROS commands
+
+- ``$ roscore`` launch the ROS core
+- ``$ roscd dyn_3d_mod`` switch to the package folder
+- ``$ roscd ros_workspace`` switch to the workspace folder
+- ``$ rosrun dyn_3d_mod {execname}`` run package
+- ``$ roslaunch freenect_launch freenect.launch`` launch freenect driver
