@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configurationDescriptor version="95">
+  <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
+    <df root="." name="0">
+      <df name="bin">
+      </df>
+      <df name="build">
+        <df name="catkin">
+          <df name="catkin_generated">
+            <df name="version">
+            </df>
+          </df>
+        </df>
+        <df name="catkin_generated">
+          <df name="installspace">
+          </df>
+          <df name="stamps">
+            <df name="dyn_3d_mod">
+            </df>
+          </df>
+        </df>
+        <df name="CMakeFiles">
+          <df name="2.8.10.1">
+            <df name="CompilerIdC">
+              <in>CMakeCCompilerId.c</in>
+            </df>
+            <df name="CompilerIdCXX">
+              <in>CMakeCXXCompilerId.cpp</in>
+            </df>
+          </df>
+          <df name="_catkin_empty_exported_target.dir">
+          </df>
+          <df name="clean_test_results.dir">
+          </df>
+          <df name="CMakeTmp">
+          </df>
+          <df name="doxygen.dir">
+          </df>
+          <df name="hello.dir">
+            <df name="src">
+            </df>
+          </df>
+          <df name="image_converter.dir">
+            <df name="src">
+            </df>
+          </df>
+          <df name="rosbag_recorder.dir">
+            <df name="src">
+            </df>
+          </df>
+          <df name="rosbuild_clean-test-results.dir">
+          </df>
+          <df name="ROSBUILD_genmsg_cpp.dir">
+          </df>
+          <df name="ROSBUILD_genmsg_lisp.dir">
+          </df>
+          <df name="ROSBUILD_gensrv_cpp.dir">
+          </df>
+          <df name="ROSBUILD_gensrv_lisp.dir">
+          </df>
+          <df name="rosbuild_precompile.dir">
+          </df>
+          <df name="rosbuild_premsgsrvgen.dir">
+          </df>
+          <df name="rospack_genmsg.dir">
+          </df>
+          <df name="rospack_genmsg_libexe.dir">
+          </df>
+          <df name="rospack_gensrv.dir">
+          </df>
+          <df name="run_tests.dir">
+          </df>
+          <df name="stream.dir">
+            <df name="src">
+            </df>
+          </df>
+          <df name="test-future.dir">
+          </df>
+          <df name="test-results-run.dir">
+          </df>
+          <df name="test-results.dir">
+          </df>
+          <df name="test.dir">
+          </df>
+          <df name="tests.dir">
+          </df>
+        </df>
+        <df name="devel">
+          <df name="etc">
+            <df name="catkin">
+              <df name="profile.d">
+              </df>
+            </df>
+          </df>
+        </df>
+        <df name="gtest">
+          <df name="CMakeFiles">
+            <df name="gtest.dir">
+              <df name="src">
+              </df>
+            </df>
+            <df name="gtest_main.dir">
+              <df name="src">
+              </df>
+            </df>
+          </df>
+        </df>
+        <df name="test_results">
+        </df>
+      </df>
+      <df name="CMakeFiles">
+        <df name="2.8.10.1">
+          <df name="CompilerIdC">
+            <in>CMakeCCompilerId.c</in>
+          </df>
+          <df name="CompilerIdCXX">
+            <in>CMakeCXXCompilerId.cpp</in>
+          </df>
+        </df>
+        <df name="CMakeTmp">
+        </df>
+      </df>
+      <df name="doc">
+      </df>
+      <df name="include">
+        <df name="dyn_3d_mod">
+        </df>
+      </df>
+      <df name="lib">
+      </df>
+      <df name="recordings">
+      </df>
+      <df name="src">
+        <in>hello.cpp</in>
+        <in>image_converter.cpp</in>
+        <in>rosbag_recorder.cpp</in>
+        <in>stream.cpp</in>
+        <in>stream_depth.cpp</in>
+      </df>
+      <df name="test">
+      </df>
+    </df>
+  </logicalFolder>
+  <projectmakefile>Makefile</projectmakefile>
+  <confs>
+    <conf name="Default" type="0">
+      <toolsSet>
+        <developmentServer>localhost</developmentServer>
+        <platform>2</platform>
+      </toolsSet>
+      <compile>
+        <compiledirpicklist>
+          <compiledirpicklistitem>.</compiledirpicklistitem>
+          <compiledirpicklistitem>${AUTO_FOLDER}</compiledirpicklistitem>
+        </compiledirpicklist>
+        <compiledir>${AUTO_FOLDER}</compiledir>
+        <compilecommandpicklist>
+          <compilecommandpicklistitem>${MAKE} ${ITEM_NAME}.o</compilecommandpicklistitem>
+          <compilecommandpicklistitem>${AUTO_COMPILE}</compilecommandpicklistitem>
+        </compilecommandpicklist>
+        <compilecommand>${AUTO_COMPILE}</compilecommand>
+      </compile>
+      <dbx_gdbdebugger version="1">
+        <gdb_pathmaps>
+        </gdb_pathmaps>
+        <gdb_interceptlist>
+          <gdbinterceptoptions gdb_all="false" gdb_unhandled="true" gdb_unexpected="true"/>
+        </gdb_interceptlist>
+        <gdb_options>
+          <DebugOptions>
+          </DebugOptions>
+        </gdb_options>
+        <gdb_buildfirst gdb_buildfirst_overriden="false" gdb_buildfirst_old="false"/>
+      </dbx_gdbdebugger>
+      <nativedebugger version="1">
+        <engine>gdb</engine>
+      </nativedebugger>
+      <runprofile version="9">
+        <runcommandpicklist>
+          <runcommandpicklistitem>"${OUTPUT_PATH}"</runcommandpicklistitem>
+        </runcommandpicklist>
+        <runcommand>"${OUTPUT_PATH}"</runcommand>
+        <rundir>.</rundir>
+        <buildfirst>false</buildfirst>
+        <terminal-type>0</terminal-type>
+        <remove-instrumentation>0</remove-instrumentation>
+        <environment>
+        </environment>
+      </runprofile>
+    </conf>
+  </confs>
+</configurationDescriptor>
