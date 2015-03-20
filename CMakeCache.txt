@@ -253,7 +253,7 @@ _CATKIN_GTEST_INCLUDE:FILEPATH=_CATKIN_GTEST_INCLUDE-NOTFOUND
 _CATKIN_GTEST_SRC:FILEPATH=/usr/src/gtest/src/gtest.cc
 
 //Path to a file.
-_file_name:FILEPATH=/home/mat/ros_workspace/dyn_3d_mod/src/stream_depth.cpp
+_file_name:FILEPATH=/home/mat/ros_workspace/dyn_3d_mod/src/tree_tests.cpp
 
 //The directory containing a CMake configuration file for catkin.
 catkin_DIR:PATH=/opt/ros/hydro/share/catkin/cmake
@@ -470,7 +470,7 @@ PYTHON_EXECUTABLE-ADVANCED:INTERNAL=1
 // it will install things.
 PYTHON_INSTALL_DIR:INTERNAL=lib/python2.7/dist-packages
 _rosbuild_EXPORTS:INTERNAL=
-_rosbuild_cached_flag_time:INTERNAL=1426799249.42
+_rosbuild_cached_flag_time:INTERNAL=1426859799.87
 _roslang_LANGS:INTERNAL=roslisp
 _rospack_deps_manifests_invoke_result:INTERNAL=/opt/ros/hydro/share/catkin/package.xml;/opt/ros/hydro/share/console_bridge/package.xml;/opt/ros/hydro/share/cpp_common/package.xml;/opt/ros/hydro/share/rostime/package.xml;/opt/ros/hydro/share/roscpp_traits/package.xml;/opt/ros/hydro/share/roscpp_serialization/package.xml;/opt/ros/hydro/share/genmsg/package.xml;/opt/ros/hydro/share/genpy/package.xml;/opt/ros/hydro/share/message_runtime/package.xml;/opt/ros/hydro/share/std_msgs/package.xml;/opt/ros/hydro/share/gencpp/package.xml;/opt/ros/hydro/share/genlisp/package.xml;/opt/ros/hydro/share/message_generation/package.xml;/opt/ros/hydro/share/rosbuild/package.xml;/opt/ros/hydro/share/rosconsole/package.xml;/opt/ros/hydro/share/rosgraph_msgs/package.xml;/opt/ros/hydro/share/xmlrpcpp/package.xml;/opt/ros/hydro/share/roscpp/package.xml;/opt/ros/hydro/share/geometry_msgs/package.xml;/opt/ros/hydro/share/sensor_msgs/package.xml;/opt/ros/hydro/share/opencv2/package.xml;/opt/ros/hydro/share/cv_bridge/package.xml;/opt/ros/hydro/share/message_filters/package.xml;/opt/ros/hydro/share/class_loader/package.xml;/opt/ros/hydro/share/rospack/package.xml;/opt/ros/hydro/share/roslib/package.xml;/opt/ros/hydro/share/pluginlib/package.xml;/opt/ros/hydro/share/image_transport/package.xml
 _rospack_msgsrv_gen_invoke_result:INTERNAL=

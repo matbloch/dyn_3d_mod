@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <string>
 #include <iostream>
-#include "tree.hh"
+#include "../lib/tree.hh"
 
 using namespace std;
 

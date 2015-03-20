@@ -34,5 +34,6 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 # create executables
 #rosbuild_add_executable(image_converter src/image_converter.cpp)
 #rosbuild_add_executable(stream src/stream.cpp)
-rosbuild_add_executable(stream src/stream_depth.cpp)
+#rosbuild_add_executable(stream src/stream.cpp)
+rosbuild_add_executable(tree src/tree_tests.cpp)
 

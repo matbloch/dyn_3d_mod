@@ -1,0 +1,36 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/mat/ros_workspace/dyn_3d_mod/src/../lib/tree.hh
+cassert
+-
+memory
+-
+stdexcept
+-
+iterator
+-
+set
+-
+queue
+-
+algorithm
+-
+cstddef
+-
+
+/home/mat/ros_workspace/dyn_3d_mod/src/tree_tests.cpp
+algorithm
+-
+string
+-
+iostream
+-
+../lib/tree.hh
+/home/mat/ros_workspace/dyn_3d_mod/src/../lib/tree.hh
+

@@ -6,7 +6,7 @@
 
 #IncludeRegexTransform: 
 
-/home/mat/ros_workspace/dyn_3d_mod/src/stream_depth.cpp
+/home/mat/ros_workspace/dyn_3d_mod/src/stream.cpp
 ros/ros.h
 -
 image_transport/image_transport.h
@@ -18,8 +18,6 @@ sensor_msgs/image_encodings.h
 opencv2/imgproc/imgproc.hpp
 -
 opencv2/highgui/highgui.hpp
--
-iostream
 -
 
 /opt/ros/hydro/include/XmlRpcDecl.h

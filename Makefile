@@ -322,19 +322,6 @@ run_tests/fast:
 .PHONY : run_tests/fast
 
 #=============================================================================
-# Target rules for targets named stream
-
-# Build rule for target.
-stream: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 stream
-.PHONY : stream
-
-# fast build rule for target.
-stream/fast:
-	$(MAKE) -f CMakeFiles/stream.dir/build.make CMakeFiles/stream.dir/build
-.PHONY : stream/fast
-
-#=============================================================================
 # Target rules for targets named test
 
 # Build rule for target.
@@ -400,6 +387,19 @@ tests/fast:
 .PHONY : tests/fast
 
 #=============================================================================
+# Target rules for targets named tree
+
+# Build rule for target.
+tree: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 tree
+.PHONY : tree
+
+# fast build rule for target.
+tree/fast:
+	$(MAKE) -f CMakeFiles/tree.dir/build.make CMakeFiles/tree.dir/build
+.PHONY : tree/fast
+
+#=============================================================================
 # Target rules for targets named gtest
 
 # Build rule for target.
@@ -425,29 +425,29 @@ gtest_main/fast:
 	$(MAKE) -f gtest/CMakeFiles/gtest_main.dir/build.make gtest/CMakeFiles/gtest_main.dir/build
 .PHONY : gtest_main/fast
 
-src/stream_depth.o: src/stream_depth.cpp.o
-.PHONY : src/stream_depth.o
+src/tree_tests.o: src/tree_tests.cpp.o
+.PHONY : src/tree_tests.o
 
 # target to build an object file
-src/stream_depth.cpp.o:
-	$(MAKE) -f CMakeFiles/stream.dir/build.make CMakeFiles/stream.dir/src/stream_depth.cpp.o
-.PHONY : src/stream_depth.cpp.o
+src/tree_tests.cpp.o:
+	$(MAKE) -f CMakeFiles/tree.dir/build.make CMakeFiles/tree.dir/src/tree_tests.cpp.o
+.PHONY : src/tree_tests.cpp.o
 
-src/stream_depth.i: src/stream_depth.cpp.i
-.PHONY : src/stream_depth.i
+src/tree_tests.i: src/tree_tests.cpp.i
+.PHONY : src/tree_tests.i
 
 # target to preprocess a source file
-src/stream_depth.cpp.i:
-	$(MAKE) -f CMakeFiles/stream.dir/build.make CMakeFiles/stream.dir/src/stream_depth.cpp.i
-.PHONY : src/stream_depth.cpp.i
+src/tree_tests.cpp.i:
+	$(MAKE) -f CMakeFiles/tree.dir/build.make CMakeFiles/tree.dir/src/tree_tests.cpp.i
+.PHONY : src/tree_tests.cpp.i
 
-src/stream_depth.s: src/stream_depth.cpp.s
-.PHONY : src/stream_depth.s
+src/tree_tests.s: src/tree_tests.cpp.s
+.PHONY : src/tree_tests.s
 
 # target to generate assembly for a file
-src/stream_depth.cpp.s:
-	$(MAKE) -f CMakeFiles/stream.dir/build.make CMakeFiles/stream.dir/src/stream_depth.cpp.s
-.PHONY : src/stream_depth.cpp.s
+src/tree_tests.cpp.s:
+	$(MAKE) -f CMakeFiles/tree.dir/build.make CMakeFiles/tree.dir/src/tree_tests.cpp.s
+.PHONY : src/tree_tests.cpp.s
 
 # Help Target
 help:
@@ -475,17 +475,17 @@ help:
 	@echo "... rospack_genmsg_libexe"
 	@echo "... rospack_gensrv"
 	@echo "... run_tests"
-	@echo "... stream"
 	@echo "... test"
 	@echo "... test-future"
 	@echo "... test-results"
 	@echo "... test-results-run"
 	@echo "... tests"
+	@echo "... tree"
 	@echo "... gtest"
 	@echo "... gtest_main"
-	@echo "... src/stream_depth.o"
-	@echo "... src/stream_depth.i"
-	@echo "... src/stream_depth.s"
+	@echo "... src/tree_tests.o"
+	@echo "... src/tree_tests.i"
+	@echo "... src/tree_tests.s"
 .PHONY : help
 
 
