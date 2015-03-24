@@ -34,3 +34,9 @@ rosbuild_add_executable(hello src/hello.cpp)
 - ``$ roscd ros_workspace`` switch to the workspace folder
 - ``$ rosrun dyn_3d_mod {execname}`` run package
 - ``$ roslaunch freenect_launch freenect.launch`` launch freenect driver
+
+## Connecting with the Kinect Sensor
+1. ``$ roscore`` launch the ROS core
+2. ``$ roslaunch freenect_launch freenect.launch`` launch freenect driver
+3. ``$ rosrun dyn_3d_mod {execname}`` run package
+
