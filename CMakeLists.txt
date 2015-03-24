@@ -28,12 +28,4 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #rosbuild_link_boost(${PROJECT_NAME} thread)
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
-
-
-
-# create executables
-#rosbuild_add_executable(image_converter src/image_converter.cpp)
-#rosbuild_add_executable(stream src/stream.cpp)
-#rosbuild_add_executable(stream src/stream.cpp)
 rosbuild_add_executable(tree src/tree_tests.cpp)
-

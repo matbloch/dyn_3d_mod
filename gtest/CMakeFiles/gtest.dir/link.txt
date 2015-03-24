@@ -1,1 +1,0 @@
-/usr/bin/g++  -fPIC -O2 -g -DNDEBUG   -shared -Wl,-soname,libgtest.so -o ../lib/libgtest.so CMakeFiles/gtest.dir/src/gtest-all.cc.o  -L/opt/ros/hydro/lib  -L/home/mat/ros_workspace/dyn_3d_mod/gtest/src -lpthread -Wl,-rpath,/opt/ros/hydro/lib:/home/mat/ros_workspace/dyn_3d_mod/gtest/src 
