@@ -2,7 +2,9 @@
 
 Dynamic 3D modeling
 
-[TOC]
+- [ROS](#ros)
+- [Building Workflow](#project-building-workflow)
+- [Recording Sensor data](#recording-sensor-streams)
 
 
 ## ROS Tutorials
