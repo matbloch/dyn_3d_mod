@@ -1,34 +1,14 @@
 # dyn_3d_mod
+
 Dynamic 3D modeling
 
+[TOC]
 
-# ROS tutorials
-http://wiki.ros.org/ROS/Tutorials
 
-# ROS message subscriber
-http://wiki.ros.org/ROS/Tutorials/WritingPublisherSubscriber%28c%2B%2B%29
-
-# ROS & IDES setup
-http://wiki.ros.org/IDEs
-
-## Workflow
-
-### 1. specify which files to compile in the CMakeLists.txt
-``$ rosed beginner_tutorials CMakeLists.txt ``
-
-> 
-Example (insert at the bottom):
-```
-rosbuild_add_executable(hello src/hello.cpp)
-```
-
-### 2. Compile
-
-``$ make``
-
-### 3. Execute
-``$ rosrun dyn_3d_mod hello``
-
+## ROS Tutorials
+- General: http://wiki.ros.org/ROS/Tutorials
+- Publisher/Subscriber nodes: http://wiki.ros.org/ROS/Tutorials/WritingPublisherSubscriber%28c%2B%2B%29
+- Working with IDEs in ROS: http://wiki.ros.org/IDEs
 
 ## ROS commands
 
@@ -37,6 +17,25 @@ rosbuild_add_executable(hello src/hello.cpp)
 - ``$ roscd ros_workspace`` switch to the workspace folder
 - ``$ rosrun dyn_3d_mod {execname}`` run package
 - ``$ roslaunch freenect_launch freenect.launch`` launch freenect driver
+
+## Project building workflow
+
+1. specify which files to compile in the CMakeLists.txt
+``$ rosed beginner_tutorials CMakeLists.txt ``
+> 
+Example (insert at the bottom):
+```
+rosbuild_add_executable(hello src/hello.cpp)
+```
+
+2. Compile
+``$ make``
+
+3. Execute
+``$ rosrun dyn_3d_mod hello``
+
+## Recording sensor streams
+`$ rosbag record -a` record all sensor streams as *.bag* file and save to the current directory
 
 ## Connecting with the Kinect Sensor
 1. ``$ roscore`` launch the ROS core
