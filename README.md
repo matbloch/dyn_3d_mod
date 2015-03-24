@@ -2,11 +2,14 @@
 Dynamic 3D modeling
 
 
-### ROS tutorials
+# ROS tutorials
 http://wiki.ros.org/ROS/Tutorials
 
-### ROS message subscriber
+# ROS message subscriber
 http://wiki.ros.org/ROS/Tutorials/WritingPublisherSubscriber%28c%2B%2B%29
+
+# ROS & IDES setup
+http://wiki.ros.org/IDEs
 
 ## Workflow
 
@@ -39,4 +42,8 @@ rosbuild_add_executable(hello src/hello.cpp)
 1. ``$ roscore`` launch the ROS core
 2. ``$ roslaunch freenect_launch freenect.launch`` launch freenect driver
 3. ``$ rosrun dyn_3d_mod {execname}`` run package
+
+
+## Eclipse & ROS packages
+Use ``make eclipse-project`` to create the Eclipse project files (run again if manifest.xml has been changed)
 
