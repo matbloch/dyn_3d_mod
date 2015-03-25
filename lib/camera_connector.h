@@ -18,7 +18,7 @@ class CameraConnector
  */
 	public:
 
-		ros::NodeHandle nh_;
+		ros::NodeHandle nh_;	// started on ros::init
 		image_transport::ImageTransport it_;
 		image_transport::Subscriber image_sub_;
 
@@ -51,6 +51,7 @@ class CameraConnector
 
 			// image received - update status
 			if(!running){
+				cout << "--- Camera connection established" << endl;
 				running = true;
 			}
 

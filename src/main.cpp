@@ -1,47 +1,142 @@
+#include "boost/program_options.hpp"	// linking in CMakeLists.txt
+
+
+
 #include <iostream>
-#include "../lib/camera_connector.h"
+#include <string>
+
+/* OpenCV 2 */
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+
 #include <unistd.h>
 #include <time.h>	// timing
 
+/* Include own libraries */
+#include "../lib/camera_connector.h"	// Kinect camera connector
 
-using namespace std;
-
-
-int main(int argc, char *argv[])
+namespace
 {
-	// init ros node
-	ros::init(argc, argv, "dyn_3d_modeling");
+  const size_t ERROR_IN_COMMAND_LINE = 1;
+  const size_t SUCCESS = 0;
+  const size_t ERROR_UNHANDLED_EXCEPTION = 2;
 
-	// create camera object
-	CameraConnector *cam = new CameraConnector();
+}
 
-    ros::Rate r(10); // 10 Hz
+int main(int argc, char** argv)
+{
 
-    unsigned int timeout = 6;  // connection timeout in seconds
-    time_t init_time = time(0);
+/* ROS stuff */
+ros::init(argc, argv, "dyn_3d_modeling");	// start node
+ros::start();
+ros::Rate r(30); // 30 Hz - Kinect: 30fps
 
 
-    while (ros::ok())
+  try
+  {
+    namespace po = boost::program_options;
+    po::options_description desc("Options");
+
+    /* ========================================== *\
+     * 		SETUP OPTIONS
+    \* ========================================== */
+
+    desc.add_options()
+      ("help,h", "Print help messages") // can use -h
+      ("display,d", "Displays the depth stream using OpenCV")	// display the depth stream
+      ("filter,f", "Add filters to the depthstream");			// test filters
+
+    po::variables_map vm;
+
+    /* ========================================== *\
+     * 		PARSE OPTIONS
+    \* ========================================== */
+
+    try
     {
+      po::store(po::parse_command_line(argc, argv, desc),vm);
 
-    	// Connection timed out - terminate the node
-    	if(time(0) > timeout + init_time){
-    		cout << "---Connection timed out" << endl;
-    		break;
-    	}
+      if (vm.count("help"))
+      {
+    	// display the program options
+        std::cout << std::endl
+        		  << "Dynamic 3D modeling using a spatiotemporal Voxel Octrees representation"
+        		  << std::endl
+                  << desc << std::endl;	// display the options descriptions (desc)
 
-		// when camera is ready, do ...
-		if(cam->running == true){
-			cout << "The depth value is : " << cam->cv_ptr->image.at<float>(49,39) << endl;
-		}
+        return SUCCESS;
+      }
 
-		ros::spinOnce();
-		r.sleep();
+      po::notify(vm);
+    }
+    catch(po::error& e)
+    {
+      std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
+      std::cerr << desc << std::endl;
+      return ERROR_IN_COMMAND_LINE;
     }
 
-	return 0;
+    /* ========================================== *\
+     * 		APPLICATION CODE
+    \* ========================================== */
+
+    static const std::string OPENCV_WINDOW = "Image window";
+
+
+    if(vm.count("display")){
+
+		// create camera object
+		CameraConnector *cam = new CameraConnector();
+
+		unsigned int timeout = 6;  // connection timeout in seconds
+		time_t init_time = time(0);
+
+		cout << "--- Trying to connect to the camera..." << endl;
+
+		while (ros::ok())
+		{
+
+			// when camera is ready, display the stream
+			if(cam->running == true){
+
+				cv::imshow(OPENCV_WINDOW, cam->cv_ptr->image);
+				cv::waitKey(3);
+
+			}else if(time(0) > timeout + init_time){
+
+				cout << "--- Connection timed out" << endl;
+				break; // Connection timed out - terminate the node
+
+			}
+
+			ros::spinOnce();
+			r.sleep();
+
+		}	// stop when camera node handle is shut down
+
+		cv::destroyWindow(OPENCV_WINDOW);	// destroy opencv window
+
+    }else if(vm.count("filter")){
+
+    	std::cout << "I'm gonna filter this stuff!" << std::endl;
+
+    }
+
+
+    // show down node
+    ros::shutdown();
+
+
+  }
+  catch(std::exception& e)
+  {
+    std::cerr << "Unhandled Exception reached the top of main: "
+              << e.what() << ", application will now exit" << std::endl;
+    return ERROR_UNHANDLED_EXCEPTION;
+
+  }
+
+  return SUCCESS;
 
 
 }
