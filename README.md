@@ -36,9 +36,6 @@ rosbuild_add_executable(hello src/hello.cpp)
 3. Execute
 ``$ rosrun dyn_3d_mod hello``
 
-## Recording sensor streams
-`$ rosbag record -a` record all sensor streams as *.bag* file and save to the current directory
-
 ## Connecting with the Kinect Sensor
 1. ``$ roscore`` launch the ROS core
 2. ``$ roslaunch freenect_launch freenect.launch`` launch freenect driver
