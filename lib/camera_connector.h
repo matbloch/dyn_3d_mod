@@ -1,4 +1,5 @@
 #include <ros/ros.h>
+#include <ros/package.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
@@ -51,7 +52,7 @@ class CameraConnector
 
 			// image received - update status
 			if(!running){
-				cout << "--- Camera connection established" << endl;
+				cout << "\033[32m" << "--- Camera connection established" << endl;
 				running = true;
 			}
 
@@ -61,5 +62,16 @@ class CameraConnector
 		}
 	}
 
+	bool save_depth()
+	{
+	/*
+	 * Saves a snapshot of the depth stream as a .png image
+	 * TODO: add datetime to filename
+	 */
+	  std::string path = ros::package::getPath("dyn_3d_mod");
+	  path.append("/recordings/images/depth_capture_.png");
+
+	  return cv::imwrite(path, cv_ptr->image);
+	}
 
 };

@@ -41,3 +41,5 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 # add executables
 rosbuild_add_executable(main src/main.cpp)
 rosbuild_link_boost(main program_options regex)
+
+rosbuild_add_executable(bag_player lib/bag_player.cpp)

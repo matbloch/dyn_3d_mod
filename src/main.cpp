@@ -14,6 +14,7 @@
 
 /* Include own libraries */
 #include "../lib/camera_connector.h"	// Kinect camera connector
+#include "../lib/definitions.h"
 
 namespace
 {
@@ -118,7 +119,40 @@ ros::Rate r(30); // 30 Hz - Kinect: 30fps
 
     }else if(vm.count("filter")){
 
-    	std::cout << "I'm gonna filter this stuff!" << std::endl;
+		// create camera object
+		CameraConnector *cam = new CameraConnector();
+		cv::Mat dst;	// blurred image
+
+		unsigned int timeout = 6;  // connection timeout in seconds
+		time_t init_time = time(0);
+
+		cout << "--- Trying to connect to the camera..." << endl;
+
+		while (ros::ok())
+		{
+
+			// when camera is ready, display the stream
+			if(cam->running == true){
+
+				// apply gaussian blur with kernel size 11
+				GaussianBlur( cam->cv_ptr->image, dst, cv::Size( 11, 11 ), 0, 0 );
+				cv::imshow(OPENCV_WINDOW, dst);
+				cv::waitKey(3);
+
+			}else if(time(0) > timeout + init_time){
+
+				cout << "--- Connection timed out" << endl;
+				break; // Connection timed out - terminate the node
+
+			}
+
+			ros::spinOnce();
+			r.sleep();
+
+		}	// stop when camera node handle is shut down
+
+		cv::destroyWindow(OPENCV_WINDOW);	// destroy opencv window
+
 
     }
 
