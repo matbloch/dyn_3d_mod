@@ -1,5 +1,5 @@
 #include "boost/program_options.hpp"	// linking in CMakeLists.txt
-
+#include <ros/package.h>
 
 
 #include <iostream>
@@ -15,6 +15,9 @@
 /* Include own libraries */
 #include "../lib/camera_connector.h"	// Kinect camera connector
 #include "../lib/definitions.h"
+#include "../lib/filters.h"	  // image filters
+
+
 
 namespace
 {
@@ -44,6 +47,7 @@ ros::Rate r(30); // 30 Hz - Kinect: 30fps
 
     desc.add_options()
       ("help,h", "Print help messages") // can use -h
+      ("simulate,s", "Simulates the sensor streams from a .bag record")
       ("display,d", "Displays the depth stream using OpenCV")	// display the depth stream
       ("filter,f", "Add filters to the depthstream");			// test filters
 
@@ -86,6 +90,14 @@ ros::Rate r(30); // 30 Hz - Kinect: 30fps
 
     if(vm.count("display")){
 
+    	/*
+    	// start virtualizer
+    	std::string sim_path = ros::package::getPath("dyn_3d_mod");
+    	sim_path.append("/bin/bag_player");
+    	const char * c = sim_path.c_str();
+    	system(c);
+    	*/
+
 		// create camera object
 		CameraConnector *cam = new CameraConnector();
 
@@ -105,7 +117,7 @@ ros::Rate r(30); // 30 Hz - Kinect: 30fps
 
 			}else if(time(0) > timeout + init_time){
 
-				cout << "--- Connection timed out" << endl;
+				std::cout << RED << "--- Connection timed out" << RESET << std::endl;
 				break; // Connection timed out - terminate the node
 
 			}
@@ -135,13 +147,14 @@ ros::Rate r(30); // 30 Hz - Kinect: 30fps
 			if(cam->running == true){
 
 				// apply gaussian blur with kernel size 11
-				GaussianBlur( cam->cv_ptr->image, dst, cv::Size( 11, 11 ), 0, 0 );
+				//ImageFilters::gaussian(cam->cv_ptr->image, dst);
+				cv::GaussianBlur( cam->cv_ptr->image, dst, cv::Size( 11, 11 ), 0, 0 );
 				cv::imshow(OPENCV_WINDOW, dst);
 				cv::waitKey(3);
 
 			}else if(time(0) > timeout + init_time){
 
-				cout << "--- Connection timed out" << endl;
+				std::cout << RED << "--- Connection timed out" << RESET << std::endl;
 				break; // Connection timed out - terminate the node
 
 			}

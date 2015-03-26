@@ -6,6 +6,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <iostream>
+#include "definitions.h"	// constants
  
 using namespace std;
 
@@ -52,7 +53,7 @@ class CameraConnector
 
 			// image received - update status
 			if(!running){
-				cout << "\033[32m" << "--- Camera connection established" << endl;
+				std::cout << GREEN << "--- Camera connection established" << RESET << endl;
 				running = true;
 			}
 
