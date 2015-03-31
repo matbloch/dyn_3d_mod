@@ -48,10 +48,11 @@ int main(int argc, char **argv) {
 		if (m.getTopic() == bag_camera_msg)
 		{
 			sensor_msgs::Image::ConstPtr rgb_image_ptr = m.instantiate<sensor_msgs::Image>();
-		if (rgb_image_ptr != NULL){
-			image_pub_.publish(*rgb_image_ptr);
+			if (rgb_image_ptr != NULL){
+				image_pub_.publish(*rgb_image_ptr);
+			}
+			break;
 		}
-	}
 
 	}
 

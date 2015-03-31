@@ -13,6 +13,9 @@
   <depend package="sensor_msgs"/>
   <depend package="cv_bridge"/>
   <depend package="image_transport"/>
+  <depend package="pcl_msgs"/>
+  <depend package="pcl_conversions"/>
+  <depend package="pcl_ros"/>
   <depend package="rosbag"/>
 </package>
 
