@@ -44,7 +44,7 @@ find_package( PCL 1.2 REQUIRED segmentation filters visualization )
 rosbuild_add_executable(main src/main.cpp)
 rosbuild_link_boost(main program_options regex)
 rosbuild_add_executable(bag_player lib/bag_player.cpp)
-
 rosbuild_add_executable(pcl_test src/pcl_test.cpp)
+rosbuild_add_executable(pcl_filter src/pcl_filter.cpp)
 
 

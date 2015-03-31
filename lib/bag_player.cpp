@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
 
     // specify file path
 	std::string bag_path = ros::package::getPath("dyn_3d_mod");
-	bag_path.append("/recordings/stream.bag");
+	bag_path.append("/recordings/all_messages.bag");
 
 	std::cout << GREEN << "--- Bag player started" << RESET << std::endl;
 
