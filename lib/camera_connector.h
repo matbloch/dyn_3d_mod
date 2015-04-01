@@ -10,9 +10,10 @@
  
 // PCL specific includes
 #include <pcl_conversions/pcl_conversions.h>
-#include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/visualization/cloud_viewer.h>
 
+#include <pcl/point_cloud.h>
 
 using namespace std;
 
@@ -25,6 +26,10 @@ class CameraConnector
  * @prop running: bool
  *
  */
+
+
+
+
 	public:
 
 		ros::NodeHandle nh_;	// started on ros::init
@@ -32,22 +37,29 @@ class CameraConnector
 
 		// depth map
 		cv_bridge::CvImagePtr cv_ptr;   // access the image by cv_ptr->image
-		pcl::PCLPointCloud2Ptr pc_ptr; 	// access point cloud
 
+		 // Viewer
+		pcl::visualization::CloudViewer viewer_;
 
 		// camera status
 		bool running;
 
-	CameraConnector(): it_(nh_)
+	CameraConnector():
+		it_(nh_),
+		viewer_("Simple Cloud Viewer")
 	{
 	  running = false;
 
 	  // Create depth image subscriber
 	  image_transport::Subscriber image_sub_ = it_.subscribe("/camera/depth/image", 1, &CameraConnector::depth_callback, this);
 
-	  // Create a ROS subscriber for the input point cloud
-	  ros::Subscriber sub = nh_.subscribe ("/camera/depth/points", 1, &CameraConnector::pc_callback, this);
+	  // Subscribe to depth point cloud
+	  ros::Subscriber pc_sub = nh_.subscribe ("/camera/depth/points", 1, &CameraConnector::pc_callback, this);
 
+	  // Subscribe to rgb point cloud (registered)
+	  //ros::Subscriber reg_pc_sub = nh_.subscribe("/camera/depth_registered/points", 1, &CameraConnector::pc_registered_callback, this);
+
+	  ROS_INFO("Waiting to receive camera stream...");
 
 	}
 	~CameraConnector()
@@ -85,9 +97,31 @@ class CameraConnector
 	 *
 	 */
 
+		ROS_INFO_STREAM("Recieved callback");
+
+		 // Convert from ROS to PCL
+		viewer_.showCloud(cloud);
 
 
 	}
+
+	void pc_registered_callback ( const sensor_msgs::PointCloud2ConstPtr& msg )
+	{
+	/*
+	 * TODO: visualize pc using pcl visualizer
+	 *
+	 */
+
+		ROS_INFO_STREAM("Recieved callback");
+
+		 // Convert from ROS to PCL
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+		pcl::fromROSMsg(*msg, *cloud);
+		viewer_.showCloud(cloud);
+
+
+	}
+
 
 	bool save_depth_image()
 	{
