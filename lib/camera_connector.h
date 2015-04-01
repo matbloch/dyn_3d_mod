@@ -8,6 +8,12 @@
 #include <iostream>
 #include "definitions.h"	// constants
  
+// PCL specific includes
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+
+
 using namespace std;
 
 class CameraConnector
@@ -15,6 +21,7 @@ class CameraConnector
 
 /*
  * @prop cv_ptr: opencv mat
+ * @prop pc_ptr: PointCloud2
  * @prop running: bool
  *
  */
@@ -22,10 +29,11 @@ class CameraConnector
 
 		ros::NodeHandle nh_;	// started on ros::init
 		image_transport::ImageTransport it_;
-		image_transport::Subscriber image_sub_;
 
 		// depth map
 		cv_bridge::CvImagePtr cv_ptr;   // access the image by cv_ptr->image
+		pcl::PCLPointCloud2Ptr pc_ptr; 	// access point cloud
+
 
 		// camera status
 		bool running;
@@ -33,7 +41,14 @@ class CameraConnector
 	CameraConnector(): it_(nh_)
 	{
 	  running = false;
-	  image_sub_ = it_.subscribe("/camera/depth/image", 1, &CameraConnector::depth_callback, this);
+
+	  // Create depth image subscriber
+	  image_transport::Subscriber image_sub_ = it_.subscribe("/camera/depth/image", 1, &CameraConnector::depth_callback, this);
+
+	  // Create a ROS subscriber for the input point cloud
+	  ros::Subscriber sub = nh_.subscribe ("/camera/depth/points", 1, &CameraConnector::pc_callback, this);
+
+
 	}
 	~CameraConnector()
 	{
@@ -63,7 +78,18 @@ class CameraConnector
 		}
 	}
 
-	bool save_depth()
+	void pc_callback (const pcl::PCLPointCloud2ConstPtr& cloud)
+	{
+	/*
+	 * TODO: visualize pc using pcl visualizer
+	 *
+	 */
+
+
+
+	}
+
+	bool save_depth_image()
 	{
 	/*
 	 * Saves a snapshot of the depth stream as a .png image

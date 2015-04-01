@@ -22,6 +22,14 @@
 
 int main(int argc, char **argv) {
 
+	/*
+
+	  Loads and publishes the following topics from a bag file:
+	  /camera/depth/image (depth image)
+	  /camera/depth/points (point cloud)
+
+	*/
+
     ros::init(argc, argv, "rosbag_publisher");
     ros::start();
     ros::Rate loop_rate(30);
@@ -47,8 +55,10 @@ int main(int argc, char **argv) {
 
     // specify file path
 	std::string bag_path = ros::package::getPath("dyn_3d_mod");
+
+
 	if(argc < 2){
-		bag_path.append("/recordings/all_messages.bag");
+		bag_path.append("/recordings/all_messages.bag");	// load standard file
 	}else{
 		bag_path.append(argv[1]);
 	}
