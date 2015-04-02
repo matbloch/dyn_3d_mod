@@ -46,5 +46,4 @@ rosbuild_link_boost(main program_options regex)
 rosbuild_add_executable(bag_player lib/bag_player.cpp)
 rosbuild_add_executable(pcl_test src/pcl_test.cpp)
 rosbuild_add_executable(pcl_filter src/pcl_filter.cpp)
-
-
+rosbuild_add_executable(pcl src/pcl.cpp)

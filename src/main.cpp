@@ -17,7 +17,7 @@
 #include "../lib/definitions.h"
 #include "../lib/filters.h"	  // image filters
 
-
+#include "pcl_connector.cpp"	  // image filters
 
 namespace
 {
@@ -49,6 +49,7 @@ ros::Rate r(30); // 30 Hz - Kinect: 30fps
       ("help,h", "Print help messages") // can use -h
       ("simulate,s", "Simulates the sensor streams from a .bag record")
       ("display,d", "Displays the depth stream using OpenCV")	// display the depth stream
+      ("pcl,p", "Display point cloud")
       ("filter,f", "Add filters to the depthstream");			// test filters
 
     po::variables_map vm;
@@ -99,12 +100,10 @@ ros::Rate r(30); // 30 Hz - Kinect: 30fps
     	*/
 
 		// create camera object
-		CameraConnector *cam = new CameraConnector();
+		CameraConnector *cam = new CameraConnector(true);
 
 		unsigned int timeout = 6;  // connection timeout in seconds
 		time_t init_time = time(0);
-
-		cout << "--- Trying to connect to the camera..." << endl;
 
 		while (ros::ok())
 		{
@@ -132,13 +131,11 @@ ros::Rate r(30); // 30 Hz - Kinect: 30fps
     }else if(vm.count("filter")){
 
 		// create camera object
-		CameraConnector *cam = new CameraConnector();
+		CameraConnector *cam = new CameraConnector(true);
 		cv::Mat dst;	// blurred image
 
 		unsigned int timeout = 6;  // connection timeout in seconds
 		time_t init_time = time(0);
-
-		cout << "--- Trying to connect to the camera..." << endl;
 
 		while (ros::ok())
 		{
@@ -167,8 +164,12 @@ ros::Rate r(30); // 30 Hz - Kinect: 30fps
 		cv::destroyWindow(OPENCV_WINDOW);	// destroy opencv window
 
 
-    }
+    }else if(vm.count("pcl")){
 
+		CameraConnector cam(true);
+		ros::spin();
+
+    }
 
     // show down node
     ros::shutdown();
