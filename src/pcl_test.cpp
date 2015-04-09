@@ -1,181 +1,117 @@
 #include <ros/ros.h>
-// ROS core
 #include <ros/package.h>
-#include <ros/ros.h>
-
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/image_encodings.h>
-
-
 #include <iostream>
-
-
-#include <boost/foreach.hpp>
-#define foreach BOOST_FOREACH
-
-
-
-
-
-// pcl - ros
-/*
-#include <pcl_ros>
-#include <pcl_ros/point_cloud.h>
-*/
+#include <pcl/io/pcd_io.h>
 
 // PCL specific includes
-#include <sensor_msgs/PointCloud2.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <pcl/visualization/cloud_viewer.h>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
 
 
-#include <pcl_ros/point_cloud.h>
-
-
-#include <pcl_ros/transforms.h>
-
-
-using namespace std;
-
+pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
 
 class CameraConnector
 {
+	private:
 
-/*
- * @prop cv_ptr: opencv mat
- * @prop running: bool
- *
- */
+		ros::NodeHandle nh_;
+
+		// point cloud
+		ros::Subscriber pc_sub_;
+
 	public:
 
-		ros::NodeHandle nh_;	// started on ros::init
-		image_transport::ImageTransport it_;
+		// point cloud pointer
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ptr;
 
 
-		uint32_t queue_size;
+	CameraConnector(bool flag);
+	~CameraConnector();
 
-	CameraConnector(): it_(nh_)
-	{
+	int i=0;
 
-		queue_size = 1;
-
-		// topic to subscribe to
-		std::string topic = nh_.resolveName("/camera/depth/points");
-
-
-		// to create a subscriber, you can do this (as above):
-		ros::Subscriber sub = nh_.subscribe<sensor_msgs::PointCloud2> (topic, queue_size, &CameraConnector::pc_callback, this);
-
-
-	}
-	~CameraConnector()
-	{
-
-	}
-
-	void pc_callback(const sensor_msgs::PointCloud2ConstPtr& pc2)
-	{
-
-		std::cout << "test" << std::endl;
-
-		pcl::PCLPointCloud2::Ptr pcl_pc(new pcl::PCLPointCloud2);
-
-		// Transformation into PCL type PointCloud2
-		pcl_conversions::toPCL(*(pc2), *(pcl_pc));
-
-
-
-		std::cout << pcl_pc << std::endl;
-		/*
-		 *
-		 * pcl::toROSMsg(pcl_pc, pc2);
-		 *
-		 *
-		 *
-		 */
-
-		/*
-		  pcl::PCLPointCloud2 pcl_pc;
-		  pcl_conversions::toPCL(input, pcl_pc);
-
-		  pcl::PointCloud<pcl::PointXYZ> cloud;
-
-		  pcl::fromPCLPointCloud2(pcl_pc, cloud);
-		  pcl::YOUR_PCL_FUNCTION(cloud,...);
-
-
-		 */
-	}
-
-	void pcl_conversion_cv (const sensor_msgs::PointCloud2ConstPtr& cloud_msg)
-	{
-		/*
-	  // Container for original & filtered data
-	  pcl::PCLPointCloud2* cloud = new pcl::PCLPointCloud2;
-	  pcl::PCLPointCloud2ConstPtr cloudPtr(cloud);
-	  pcl::PCLPointCloud2 cloud_filtered;
-
-	  // Convert to PCL data type
-	  pcl_conversions::toPCL(*cloud_msg, *cloud);
-
-	  // Perform the actual filtering
-	  pcl::VoxelGrid<pcl::PCLPointCloud2> sor;
-	  sor.setInputCloud (cloudPtr);
-	  sor.setLeafSize (0.1, 0.1, 0.1);
-	  sor.filter (cloud_filtered);
-
-	  // Convert to ROS data type
-	  sensor_msgs::PointCloud2 output;
-	  pcl_conversions::fromPCL(cloud_filtered, output);
-
-	  // Publish the data
-	  pub.publish (output);
-	  */
-
-
-		/*
-		  // Convert to ROS data type
-		  sensor_msgs::PointCloud2 output;
-		  pcl_conversions::fromPCL(cloud_filtered, output);
-
-		 */
-
-
-
-
-
-
-
-	}
+	/* message callbacks */
+	void pc_callback ( const sensor_msgs::PointCloud2ConstPtr& msg );
 
 };
 
+/* ========================================== *\
+ * 		CONSTRUCTOR/DESTRUCTOR
+\* ========================================== */
+
+/* constructor */
+CameraConnector::CameraConnector(bool flag):
+	nh_("~")
+{
+
+  // Subscribe to depth point cloud
+  pc_sub_ = nh_.subscribe ("/camera/depth/points", 1, &CameraConnector::pc_callback, this);
+
+}
+
+CameraConnector::~CameraConnector(){}
+
+/* ========================================== *\
+ * 		MESSAGE CALLBACKS
+\* ========================================== */
+
+void CameraConnector::pc_callback ( const sensor_msgs::PointCloud2ConstPtr& msg )
+{
+
+	// convert to XYZ PC
+	//pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::fromROSMsg(*msg, *cloud);
+
+
+	//cloud_ptr = cloud;
+
+}
+
+/* ========================================== *\
+ * 		MAIN FUNCTION
+\* ========================================== */
 
 
 int main(int argc, char** argv)
 {
 
 
-	/* ROS stuff */
-	ros::init(argc, argv, "sub_pcl");	// start node
-	ros::start();
-	ros::Rate r(30); // 30 Hz - Kinect: 30fps
+	pcl::visualization::CloudViewer viewer_("Cloud Viewer");
+
+    /* ROS stuff */
+    ros::init(argc, argv, "dyn_3d_modeling");
+    ros::start();
+    ros::Rate r(10);
 
 
 	// create camera object
-	CameraConnector *cam = new CameraConnector();
+	CameraConnector cam = new CameraConnector(true);
 
-
+	int i = 0;
 	while (ros::ok())
 	{
 
 
+		/* visualize point cloud */
+		viewer_.showCloud(cloud);
+
+		/*
+		if(i==10){
+
+		}
+		*/
+
 		ros::spinOnce();
 		r.sleep();
 
-	}
+	}	// stop when camera node handle is shut down
 
 
+	return 0;
 
 }
-
