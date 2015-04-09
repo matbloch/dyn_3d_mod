@@ -22,19 +22,12 @@
 namespace
 {
   const size_t ERROR_IN_COMMAND_LINE = 1;
-  const size_t SUCCESS = 0;
   const size_t ERROR_UNHANDLED_EXCEPTION = 2;
 
 }
 
 int main(int argc, char** argv)
 {
-
-/* ROS stuff */
-ros::init(argc, argv, "dyn_3d_modeling");	// start node
-ros::start();
-ros::Rate r(30); // 30 Hz - Kinect: 30fps
-
 
   try
   {
@@ -47,10 +40,8 @@ ros::Rate r(30); // 30 Hz - Kinect: 30fps
 
     desc.add_options()
       ("help,h", "Print help messages") // can use -h
-      ("simulate,s", "Simulates the sensor streams from a .bag record")
-      ("display,d", "Displays the depth stream using OpenCV")	// display the depth stream
-      ("pcl,p", "Display point cloud")
-      ("filter,f", "Add filters to the depthstream");			// test filters
+      ("cv,c", "Perform OpenCV tests")	// display the depth stream
+      ("pcl,p", "Display point cloud");
 
     po::variables_map vm;
 
@@ -69,8 +60,7 @@ ros::Rate r(30); // 30 Hz - Kinect: 30fps
         		  << "Dynamic 3D modeling using a spatiotemporal Voxel Octrees representation"
         		  << std::endl
                   << desc << std::endl;	// display the options descriptions (desc)
-
-        return SUCCESS;
+        return 0;
       }
 
       po::notify(vm);
@@ -86,18 +76,15 @@ ros::Rate r(30); // 30 Hz - Kinect: 30fps
      * 		APPLICATION CODE
     \* ========================================== */
 
-    static const std::string OPENCV_WINDOW = "Image window";
 
 
-    if(vm.count("display")){
+    /* ROS stuff */
+    ros::init(argc, argv, "dyn_3d_modeling");	// start node
+    ros::start();
+    ros::Rate r(30); // 30 Hz - Kinect: 30fps
 
-    	/*
-    	// start virtualizer
-    	std::string sim_path = ros::package::getPath("dyn_3d_mod");
-    	sim_path.append("/bin/bag_player");
-    	const char * c = sim_path.c_str();
-    	system(c);
-    	*/
+
+    if(vm.count("cv")){
 
 		// create camera object
 		CameraConnector *cam = new CameraConnector(true);
@@ -111,8 +98,10 @@ ros::Rate r(30); // 30 Hz - Kinect: 30fps
 			// when camera is ready, display the stream
 			if(cam->running == true){
 
-				cv::imshow(OPENCV_WINDOW, cam->cv_ptr->image);
-				cv::waitKey(3);
+				/*
+				 * do something with the CV image (use: cam->cv_ptr->image)
+				 *
+				 */
 
 			}else if(time(0) > timeout + init_time){
 
@@ -125,55 +114,30 @@ ros::Rate r(30); // 30 Hz - Kinect: 30fps
 			r.sleep();
 
 		}	// stop when camera node handle is shut down
-
-		cv::destroyWindow(OPENCV_WINDOW);	// destroy opencv window
-
-    }else if(vm.count("filter")){
-
-		// create camera object
-		CameraConnector *cam = new CameraConnector(true);
-		cv::Mat dst;	// blurred image
-
-		unsigned int timeout = 6;  // connection timeout in seconds
-		time_t init_time = time(0);
-
-		while (ros::ok())
-		{
-
-			// when camera is ready, display the stream
-			if(cam->running == true){
-
-				// apply gaussian blur with kernel size 11
-				//ImageFilters::gaussian(cam->cv_ptr->image, dst);
-				cv::GaussianBlur( cam->cv_ptr->image, dst, cv::Size( 11, 11 ), 0, 0 );
-				cv::imshow(OPENCV_WINDOW, dst);
-				cv::waitKey(3);
-
-			}else if(time(0) > timeout + init_time){
-
-				std::cout << RED << "--- Connection timed out" << RESET << std::endl;
-				break; // Connection timed out - terminate the node
-
-			}
-
-			ros::spinOnce();
-			r.sleep();
-
-		}	// stop when camera node handle is shut down
-
-		cv::destroyWindow(OPENCV_WINDOW);	// destroy opencv window
 
 
     }else if(vm.count("pcl")){
 
 		CameraConnector cam(true);
-		ros::spin();
+
+		while (ros::ok())
+		{
+
+			/*
+			 * perform pcl tests
+			 *
+			 */
+
+			ros::spinOnce();
+			r.sleep();
+
+		}
 
     }
 
+
     // show down node
     ros::shutdown();
-
 
   }
   catch(std::exception& e)
@@ -184,7 +148,7 @@ ros::Rate r(30); // 30 Hz - Kinect: 30fps
 
   }
 
-  return SUCCESS;
+  return 0;
 
 
 }
