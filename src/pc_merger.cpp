@@ -22,6 +22,8 @@ pcl::PointCloud<pcl::PointXYZ> pc_merged;
 void processing_callback(const sensor_msgs::PointCloud2ConstPtr& cloud1, const sensor_msgs::PointCloud2ConstPtr& cloud2)
 {
 
+	ROS_INFO("Synced callback was called.");
+
 	pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_cloud1(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_cloud2(new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -56,16 +58,9 @@ int main(int argc, char** argv)
 	message_filters::Subscriber<sensor_msgs::PointCloud2> cloud_sub_1(nh, "/camera1/depth/image", 1);
 	message_filters::Subscriber<sensor_msgs::PointCloud2> cloud_sub_2(nh, "/camera2/depth/image", 1);
 
-	message_filters::Subscriber<Image> image_sub(nh, "image", 1);
-	message_filters::Subscriber<CameraInfo> info_sub(nh, "camera_info", 1);
-
 	// callback if message with same timestaps are received (buffer length: 10)
 	typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2> sync_policy;
 	message_filters::Synchronizer<sync_policy> sync(MySyncPolicy(10), cloud_sub_1, cloud_sub_2);
-
-
-	// sync
-	TimeSynchronizer<Image, CameraInfo> sync(image_sub, info_sub, 10);
 
 	// add callback
 	sync.registerCallback(boost::bind(&processing_callback, _1, _2));
