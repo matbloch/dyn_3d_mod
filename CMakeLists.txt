@@ -1,3 +1,5 @@
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+
 cmake_minimum_required(VERSION 2.4.6)
 include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 
@@ -9,6 +11,9 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
 #set(ROS_BUILD_TYPE RelWithDebInfo)
 
+
+
+
 rosbuild_init()
 
 
@@ -18,10 +23,6 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
-#uncomment if you have defined messages
-#rosbuild_genmsg()
-#uncomment if you have defined services
-#rosbuild_gensrv()
 
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
@@ -40,6 +41,10 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 # pcl
 find_package( PCL 1.2 REQUIRED segmentation filters visualization )
 
+# eigen lib
+find_package(Eigen REQUIRED)
+include_directories(${Eigen_INCLUDE_DIRS})
+
 # add executables
 #rosbuild_add_executable(main src/main.cpp)
 #rosbuild_link_boost(main program_options regex)
@@ -47,3 +52,6 @@ find_package( PCL 1.2 REQUIRED segmentation filters visualization )
 #rosbuild_add_executable(pcl src/pcl_test.cpp)
 rosbuild_add_executable(pc_viewer src/pc_viewer.cpp)
 rosbuild_add_executable(icp src/icp.cpp)
+
+
+target_link_libraries(icp ${PCL_LIBRARIES} libvtkCommon.so libvtkFiltering.so ) # for pcl::visualizer
