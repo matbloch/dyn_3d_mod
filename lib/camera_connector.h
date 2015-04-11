@@ -18,24 +18,30 @@
 #include <pcl/filters/voxel_grid.h> // voxel grid
 
 using namespace std;
+using namespace pcl;
 
 
-typedef pcl::PointCloud<pcl::PointXYZRGB> cloudrgb;
-typedef cloudrgb::Ptr cloudrgbptr;
-typedef pcl::PointCloud<pcl::PointXYZ> cloud;
-typedef cloud::Ptr cloudptr;
+/* ========================================== *\
+ * 		GLOBALS
+\* ========================================== */
+static const std::string OPENCV_WINDOW_COLOR = "Color stream";
+static const std::string OPENCV_WINDOW_DEPTH = "Depth stream";
+bool SAVE_CLOUD = false;
 
+/* ========================================== *\
+ * 		FORWARD DECLARATIONS
+\* ========================================== */
 
-static const std::string OPENCV_WINDOW = "Image window";
+void keyboardEventOccurred(const visualization::KeyboardEvent& event,void* nothing);
+boost::shared_ptr<visualization::CloudViewer> createViewer();
+
 
 class CameraConnector
 {
 
 /*
- * @prop cv_ptr: opencv mat
+ * @prop cv_ptr->image: opencv mat
  * @prop running: bool
- * @arg flag: bool
- * @arg pc_topic: string optional, the point cloud topic to subscribe to
  *
  */
 
@@ -44,66 +50,47 @@ class CameraConnector
 		ros::NodeHandle nh_;	// started on ros::init
 		image_transport::ImageTransport it_;
 
-		// point cloud
+		// point cloud subsscriber
 		ros::Subscriber pc_sub_;
 
-		// registered point cloud
-		ros::Subscriber pc_reg_sub_;
-
-		 // PCL visualization
-		//pcl::visualization::CloudViewer viewer_;
-		//boost::shared_ptr<pcl::visualization::CloudViewer> viewer_;
+		// image subscribers
+		image_transport::Subscriber image_color_sub_;
+		image_transport::Subscriber image_depth_sub_;
 
 	public:
 
-		// depth map
-		cv_bridge::CvImagePtr cv_ptr;   // access the image by cv_ptr->image
+		// depth & color images
+		cv_bridge::CvImagePtr cv_ptr_depth;   // access the image by cv_ptr->image
+		cv_bridge::CvImagePtr cv_ptr_color;   // access the image by cv_ptr->image
 
-		// point cloud pointer
-		cloudptr pc;
-		cloudrgbptr pc_reg;
+		// point cloud visualizer
+		boost::shared_ptr<visualization::CloudViewer> pc_viewer_;
 
 		// status
 		bool running;
 		bool pc_running;
-		bool pc_reg_running;
-		bool show_depth_image;
-		bool show_pc;
-		bool show_pc_reg;
+		bool display_color_image;
+		bool display_depth_image;
+		bool display_cloud;
 
-	CameraConnector(bool flag,
-					string pc_topic = '/camera/depth/points');	// the point cloud topic to subscribe to
 
+	CameraConnector(bool flag);	// the point cloud topic to subscribe to
 	~CameraConnector();
 
 	/* message callbacks */
 
-	void depth_callback(const sensor_msgs::ImageConstPtr& msg);
+	void depth_image_callback( const sensor_msgs::ImageConstPtr& msg );
+	void color_image_callback( const sensor_msgs::ImageConstPtr& msg );
 	void pc_callback ( const sensor_msgs::PointCloud2ConstPtr& msg );
-	void pc_registered_callback ( const sensor_msgs::PointCloud2ConstPtr& msg );
-	void pc_voxel_callback ( const sensor_msgs::PointCloud2ConstPtr& msg );
+	void pc_voxel_callback ( const pcl::PCLPointCloud2ConstPtr& msg);
 
 	/* storage function */
 	bool save_depth_image();
 
-	void createViewer();
-
-
-	/* visualization sub class */
-    class Visualizer
-    {
-
-    	CameraConnector& parent_;	// CameraConnector
-    	public:
-    		Visualizer(CameraConnector& parent);
-    		void depth_image();
-    		void pc();
-    		void pc_reg();
-    };
-
-    /* accessible through: {CameraConnector instance}.show */
-    Visualizer show;
-
+	/* display functions */
+	void show_depth(bool show);
+	void show_pc(bool show);
+	void show_color(bool show);
 
 };
 
@@ -113,55 +100,81 @@ class CameraConnector
 
 /* constructor */
 CameraConnector::CameraConnector(
-		bool flag,
-		string pc_topic = '/camera/depth/points'):	// initialize non static data members with initialization list
-	it_(nh_),
-	nh_("~"),
-	//viewer_("Point Cloud Viewer"),
-	show(*this)
+		bool flag):	// initialize non static data members with initialization list
+	it_(nh_),	// image transform
+	nh_("~")	// node handle
 {
 
   // init status
   running = false;
   pc_running = false;
-  pc_reg_running = false;
-  show_depth_image = false;
-  show_pc = false;
-  show_pc_reg = false;
+  display_color_image = false;
+  display_cloud = false;
 
-  // Create depth image subscriber
-  image_transport::Subscriber image_sub_ = it_.subscribe("/camera/depth/image", 1, &CameraConnector::depth_callback, this);
+  SAVE_CLOUD = false;
+
+  // Create image subscribers
+  image_depth_sub_ = it_.subscribe("/camera/depth/image", 1, &CameraConnector::depth_image_callback, this);
+  image_color_sub_ = it_.subscribe("/camera/rgb/image_raw", 1, &CameraConnector::color_image_callback, this);
 
   // Subscribe to depth point cloud
-  pc_sub_ = nh_.subscribe (pc_topic, 1, &CameraConnector::pc_callback, this);
+  pc_sub_ = nh_.subscribe("/camera/depth/points", 1, &CameraConnector::pc_callback, this);
 
   ROS_INFO("Waiting to receive camera stream...");
 
 }
 
-CameraConnector::~CameraConnector(){}
+CameraConnector::~CameraConnector(){
+	cv::destroyWindow(OPENCV_WINDOW_COLOR);
+	cv::destroyWindow(OPENCV_WINDOW_DEPTH);
+}
 
 /* ========================================== *\
  * 		MESSAGE CALLBACKS
 \* ========================================== */
 
-void CameraConnector::depth_callback(const sensor_msgs::ImageConstPtr& msg)
+void CameraConnector::depth_image_callback(const sensor_msgs::ImageConstPtr& msg)
 {
 	/*
 	* converts the incoming ROS message to an OpenCV image
 	*/
 
 	try{
-	// convert to cv: 32bit float representing meters (rostopic interprets as int8)
-	cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::TYPE_32FC1);
+		// convert to cv: 32bit float representing meters (rostopic interprets as int8)
+		cv_ptr_depth = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::TYPE_32FC1);
 
 		// image received - update status
 		if(!running){
-			std::cout << GREEN << "--- Receiving depth image stream" << RESET << endl;
+			std::cout << GREEN << "--- Receiving image stream" << RESET << endl;
 			running = true;
 		}
-		if(show_depth_image){
-			cv::imshow(OPENCV_WINDOW, cv_ptr->image);
+		if(display_depth_image){
+			cv::imshow(OPENCV_WINDOW_DEPTH, cv_ptr_depth->image);
+			cv::waitKey(3);
+		}
+
+	}catch (cv_bridge::Exception& e){
+		ROS_ERROR("cv_bridge exception: %s", e.what());
+		return;
+	}
+}
+
+void CameraConnector::color_image_callback(const sensor_msgs::ImageConstPtr& msg)
+{
+	/*
+	* converts the incoming ROS message to an OpenCV image
+	*/
+
+	try{
+		cv_ptr_color = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+
+		// image received - update status
+		if(!running){
+			std::cout << GREEN << "--- Receiving image stream" << RESET << endl;
+			running = true;
+		}
+		if(display_color_image){
+			cv::imshow(OPENCV_WINDOW_COLOR, cv_ptr_color->image);
 			cv::waitKey(3);
 		}
 
@@ -176,7 +189,7 @@ void CameraConnector::pc_callback ( const sensor_msgs::PointCloud2ConstPtr& msg 
 
 	// image received - update status
 	if(!pc_running){
-		std::cout << GREEN << "--- Receiving Point Cloud stream" << RESET << endl;
+		std::cout << GREEN << "--- Receiving point cloud stream" << RESET << endl;
 		pc_running = true;
 	}
 
@@ -184,49 +197,18 @@ void CameraConnector::pc_callback ( const sensor_msgs::PointCloud2ConstPtr& msg 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr mycloud(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::fromROSMsg(*msg, *mycloud);
 
-
-	/*
-	//remove NAN points from the cloud
-	std::vector<int> indices;
-	pcl::removeNaNFromPointCloud(*cloud,*cloud, indices);
-	*/
-
-	/*
-	if(show_pc){
-
-		 // convert to XYZ PC
-		pcl::PointCloud<pcl::PointXYZ>::Ptr pc(new pcl::PointCloud<pcl::PointXYZ>);
-		pcl::fromROSMsg(*msg, *pc);
-
-		// visualize
-		//viewer_.showCloud(pc);
-	}
-	 */
-
-}
-
-void CameraConnector::pc_registered_callback ( const sensor_msgs::PointCloud2ConstPtr& msg )
-{
-
-	// image received - update status
-	if(!pc_reg_running){
-		std::cout << GREEN << "--- Receiving Point Cloud stream" << RESET << endl;
-		pc_reg_running = true;
+	if (display_cloud && ! pc_viewer_->wasStopped())
+	{
+		pc_viewer_->showCloud(mycloud);
 	}
 
+	if (SAVE_CLOUD)
+	{
 
-}
+		std::cout << "Saving " << std::endl;
 
-// Creates, initializes and returns a new viewer.
-void CameraConnector::createViewer()
-{
-
-/*
-	show_pc = true;
-	viewer_ = (new pcl::visualization::CloudViewer ("3D Viewer"));
-	*/
-	//viewer_ = (new pcl::visualization::CloudViewer("OpenNI viewer"));
-	//boost::shared_ptr<visualization::CloudViewer> v (new visualization::CloudViewer("OpenNI viewer"));
+		SAVE_CLOUD = false;
+	}
 
 }
 
@@ -235,42 +217,63 @@ void CameraConnector::createViewer()
  * 		VISUALIZATION
 \* ========================================== */
 
-CameraConnector::Visualizer::Visualizer(CameraConnector& parent) : parent_(parent) {
+void CameraConnector::show_depth(bool show)
+{
+	if(show == true && display_depth_image == false){
+		display_depth_image = true;
+	}else if(show == false){
+		display_depth_image = false;
+		cv::destroyWindow(OPENCV_WINDOW_DEPTH);
+	}
+}
+void CameraConnector::show_color(bool show)
+{
+	if(show == true && display_color_image == false){
+		display_color_image = true;
+	}else if(show == false){
+		display_color_image = false;
+		cv::destroyWindow(OPENCV_WINDOW_COLOR);
+	}
+}
+void CameraConnector::show_pc(bool show)
+{
+	if(show == true && display_cloud == false){
+		display_cloud = true;
+		pc_viewer_ = createViewer();
+	}else if(show == false){
+		display_cloud = false;
+		// TODO: destroy viewer
+	}
+}
 
+void keyboardEventOccurred(const visualization::KeyboardEvent& event,void* nothing)
+{
+	if (event.getKeySym() == "space" && event.keyDown()){SAVE_CLOUD = true;}
+}
 
+boost::shared_ptr<visualization::CloudViewer> createViewer(){
+	boost::shared_ptr<visualization::CloudViewer> v
+	(new visualization::CloudViewer("Point Cloud Viewer"));
+	v->registerKeyboardCallback(keyboardEventOccurred);
+
+	return (v);
 }
-void CameraConnector::Visualizer::depth_image()
-{
-	parent_.show_depth_image = true;
-}
-void CameraConnector::Visualizer::pc()
-{
-	parent_.show_pc = true;
-}
-void CameraConnector::Visualizer::pc_reg()
-{
-	parent_.show_pc_reg = true;
-}
+
 
 /* ========================================== *\
  * 		FILTERING
 \* ========================================== */
 
-
-void CameraConnector::pc_voxel_callback ( const sensor_msgs::PointCloud2ConstPtr& msg )
+void CameraConnector::pc_voxel_callback ( const pcl::PCLPointCloud2ConstPtr& msg  )
 {
 
   pcl::PCLPointCloud2 cloud_filtered;
-
   pcl::VoxelGrid<pcl::PCLPointCloud2> vgrid;
   vgrid.setInputCloud (msg);
   vgrid.setLeafSize (0.1, 0.1, 0.1);
   vgrid.filter (cloud_filtered);
 
-
-  //pub.publish (cloud_filtered);
 }
-
 
 /* ========================================== *\
  * 		DATA EXTRACTION
