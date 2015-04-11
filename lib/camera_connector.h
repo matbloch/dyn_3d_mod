@@ -12,6 +12,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
 //#include <pcl/point_cloud.h>
 #include <pcl_ros/point_cloud.h>	// TODO: not sure if to use pcl/point_cloud or pcl_ros/point_cloud
 
@@ -78,7 +79,6 @@ class CameraConnector
 	~CameraConnector();
 
 	/* message callbacks */
-
 	void depth_image_callback( const sensor_msgs::ImageConstPtr& msg );
 	void color_image_callback( const sensor_msgs::ImageConstPtr& msg );
 	void pc_callback ( const sensor_msgs::PointCloud2ConstPtr& msg );
@@ -91,6 +91,9 @@ class CameraConnector
 	void show_depth(bool show);
 	void show_pc(bool show);
 	void show_color(bool show);
+
+	/* help */
+	void display_help();
 
 };
 
@@ -121,6 +124,7 @@ CameraConnector::CameraConnector(
   pc_sub_ = nh_.subscribe("/camera/depth/points", 1, &CameraConnector::pc_callback, this);
 
   ROS_INFO("Waiting to receive camera stream...");
+  display_help();
 
 }
 
@@ -204,14 +208,27 @@ void CameraConnector::pc_callback ( const sensor_msgs::PointCloud2ConstPtr& msg 
 
 	if (SAVE_CLOUD)
 	{
+		std::string path = ros::package::getPath("dyn_3d_mod");
 
-		std::cout << "Saving " << std::endl;
+		string filename;
+		cout << "Please enter a file name: ";
+		cin >> filename;
 
+		if(filename.find_last_of(".")!=-1){
+			if(filename.substr(filename.find_last_of(".") + 1) != "pcd") {
+				std::cout << "Invalid file name. Please try again." << std::endl;
+				return;
+			}
+		}else{
+			filename = filename + ".pcd";
+		}
+
+		pcl::io::savePCDFileASCII(path+"/recordings/"+filename, *mycloud);
+		std::cout << GREEN << "--- Point cloud was saved to: " << path+"/recordings/"+filename << RESET << std::endl;
 		SAVE_CLOUD = false;
 	}
 
 }
-
 
 /* ========================================== *\
  * 		VISUALIZATION
@@ -248,7 +265,9 @@ void CameraConnector::show_pc(bool show)
 
 void keyboardEventOccurred(const visualization::KeyboardEvent& event,void* nothing)
 {
-	if (event.getKeySym() == "space" && event.keyDown()){SAVE_CLOUD = true;}
+	if (event.getKeySym() == "Return" && event.keyDown()){
+		SAVE_CLOUD = true;
+	}
 }
 
 boost::shared_ptr<visualization::CloudViewer> createViewer(){
@@ -264,7 +283,7 @@ boost::shared_ptr<visualization::CloudViewer> createViewer(){
  * 		FILTERING
 \* ========================================== */
 
-void CameraConnector::pc_voxel_callback ( const pcl::PCLPointCloud2ConstPtr& msg  )
+void CameraConnector::pc_voxel_callback( const pcl::PCLPointCloud2ConstPtr& msg  )
 {
 
   pcl::PCLPointCloud2 cloud_filtered;
@@ -294,6 +313,19 @@ bool save_depth_image()
   return 0;
 }
 
+/* ========================================== *\
+ * 		HELP
+\* ========================================== */
 
+void CameraConnector::display_help( )
+{
+	std::cout<<"\n";
+	std::cout << "=================================" << std::endl;
+	std::cout << " USAGE:" << std::endl;
+	std::cout << "---------------------------------" << std::endl;
+	std::cout << " [RETURN]: save point cloud" << std::endl;
+	std::cout << "=================================" << std::endl;
+	std::cout<<"\n";
+}
 
 
