@@ -50,8 +50,6 @@ int main()
 	cv::projectPoints(objectPoints, rVec, tVec, intrinsicMat, cv::Mat(), imagePoints);
 
 	// Extract depth measured at imagePoints
-
-
 	std::cout << "Voxeldistances "    << std::endl << " " << voxeldistances << std::endl << std::endl;
 
 	// Display the projections done
@@ -67,20 +65,29 @@ int main()
 	return 0;
 }
 
+
+/* ====================================================================== *\
+    Calculate z-coordinate in camera frame of a point to the camera center
+\* ====================================================================== */
+
 void getPointDepth(std::vector<cv::Point3d> worldpoints, cv::Mat rVec, cv::Mat tVec, cv::Mat voxeldistances)
 {
 	// Get rotation matrix
 	cv::Mat R(3, 3, cv::DataType<double>::type);
 	Rodrigues(rVec, R);
-	std::cout << "Rotation Matrix: "    << std::endl << " " << R << std::endl << std::endl;
-
-	for (int i; i<worldpoints.size(); i++)
-	{
-		voxeldistances.at<double>(i)  = worldpoints[i].z * R.at<double>(2,2) - tVec.at<double>(2);
-	}
+	std::cout << "Rotation Matrix: "    << std::endl << " " << R.row(2)*worldpoints[3] << std::endl << std::endl;
+	std::cout << "test "   << std::endl;
+	// Iterate over the worldpoints, apply rotation and translation, and extraxt z
+//	for (int i; i<worldpoints.size(); i++)
+//	{
+//		voxeldistances.at<double>(i)  = worldpoints[i] * R.at<double>(2,2) - tVec.at<double>(2);
+//	}
 
 }
 
+/* ========================================== *\
+ * 		         Fake image and points
+\* ========================================== */
 
 cv::Mat GenerateKinectImage()
 {
@@ -120,7 +127,11 @@ std::vector<cv::Point3d> Generate3DPoints()
 	points.push_back(cv::Point3d(x, y, z));
 
 	return points;
-								}
+							}
+
+/* ========================================== *\
+ * 		         Camera settings
+\* ========================================== */
 
 void getCameraParameters(cv::Mat intrinsicMat)
 {

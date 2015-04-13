@@ -5,6 +5,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <cv.hpp>
+#include <math.h>
 
 struct Vox_param {
 	int gridsize;
@@ -39,8 +40,8 @@ int main()
 
 	// Set Voxel parameters
 	Vox_param Voxelparameters;
-	Voxelparameters.gridsize = 32;   // Must be 2^x
-	Voxelparameters.spacing_in_m = 0.05;
+	Voxelparameters.gridsize = 128;   // Must be 2^x
+	Voxelparameters.spacing_in_m = 0.02;
 
 	// Create voxels
 		// 3d matrix with 3 channel floatingpoints.
@@ -112,11 +113,18 @@ void fillVoxels(cv::Mat Voxels, Vox_param Voxelparameters, cv::Mat image, cv::Ma
 		  for (int j = 0; j < Voxelparameters.gridsize; j++)
 		    for (int k = 0; k < Voxelparameters.gridsize; k++)
 		    {
+		    	// If pixel is not in image return nan
+		    	if (isnan(Voxels.at<cv::Vec3f>(i,j,k)[0]) || isnan(Voxels.at<cv::Vec3f>(i,j,k)[1])){
+		    		FilledVoxels.at<float>(i,j,k) = NAN;
+		    	}
+
+		    	else{
 		    	// Get measured depth at pixel value:   image(y,x)
 		    	d_meas = image.at<float>( (int)Voxels.at<cv::Vec3f>(i,j,k)[1] ,  (int)Voxels.at<cv::Vec3f>(i,j,k)[0]  );
 
 		    	// Evaluate the TSDF with the depth difference and store the result
-		    	FilledVoxels.at<float>(i,j,k) = TSDF(Voxels.at<cv::Vec3f>(i,j,k)[2] - d_meas );
+		        FilledVoxels.at<float>(i,j,k) = TSDF(Voxels.at<cv::Vec3f>(i,j,k)[2] - d_meas );
+		    	}
 
 //				std::cout << "Distance: " << d_meas   << std::endl;
 //				std::cout << "TSDF: " << FilledVoxels.at<float>(i,j,k) << std::endl << std::endl;
@@ -161,6 +169,13 @@ void calcVoxel_Depth_Pixels(cv::Mat Voxels, Vox_param Voxelparameters, cv::Mat R
 	    	// Assign pixel values
 			Voxels.at<cv::Vec3f>(i,j,k)[0] = pix.at<float>(0)/pix.at<float>(2);
 			Voxels.at<cv::Vec3f>(i,j,k)[1] = pix.at<float>(1)/pix.at<float>(2);
+
+			// Check if pixels are within image
+			if (Voxels.at<cv::Vec3f>(i,j,k)[0]>=640 || Voxels.at<cv::Vec3f>(i,j,k)[0]<0)
+				Voxels.at<cv::Vec3f>(i,j,k)[0] = NAN;
+
+			if (Voxels.at<cv::Vec3f>(i,j,k)[1]>=480 || Voxels.at<cv::Vec3f>(i,j,k)[1]<0)
+				Voxels.at<cv::Vec3f>(i,j,k)[1] = NAN;
 	    }
 }
 
