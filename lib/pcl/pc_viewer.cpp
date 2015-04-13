@@ -1,5 +1,4 @@
 #include <ros/ros.h>
-#include <ros/ros.h>
 #include <ros/package.h>
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/image_encodings.h>
@@ -26,18 +25,21 @@ int viewer(std::string filename)
 	path.append("/recordings/");
 	path.append(filename); // load file
 
+
+
+
 	// declare point cloud
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1 (new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
 
 	// load file
-	if(filename.substr(filename.find_last_of(".") + 1) == "pcd") {
-		if (pcl::io::loadPCDFile<pcl::PointXYZ>(path, *cloud1) != 0)
+	if(path.substr(path.find_last_of(".") + 1) == "pcd") {
+		if (pcl::io::loadPCDFile<pcl::PointXYZ>(path, *cloud) != 0)
 		{
 			std::cout << "Could not load the point cloud." << std::endl;
 			return -1;
 		}
-	} else if(filename.substr(filename.find_last_of(".") + 1) == "ply") {
-		if (pcl::io::loadPLYFile(path, *cloud1) != 0)
+	} else if(path.substr(path.find_last_of(".") + 1) == "ply") {
+		if (pcl::io::loadPLYFile(path, *cloud) != 0)
 		{
 			std::cout << "Could not load the point cloud." << std::endl;
 			return -1;
@@ -49,7 +51,7 @@ int viewer(std::string filename)
 
 	// visualize
 	pcl::visualization::CloudViewer viewer ("Simple Cloud Viewer");
-	viewer.showCloud (cloud1);
+	viewer.showCloud (cloud);
 	while (!viewer.wasStopped ()) { // Display the visualiser until 'q' key is pressed
 	}
 

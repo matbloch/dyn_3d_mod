@@ -79,7 +79,7 @@ void print_array(float3 myarray){
  * 		ITERATIVELY CLOSEST POINT
 \* ========================================== */
 
-void iterative_closest_point()
+void iterative_closest_point(std::string path_cloud1, std::string path_cloud2)
 {
 
 	// declare two point clouds
@@ -148,7 +148,12 @@ void iterative_closest_point()
 int main(int argc, char** argv)
 {
 
-	iterative_closest_point();
+	if(argc < 3){
+		std::cout << "Please select two point clouds." << std::endl;
+		return -1;
+	}
+
+	iterative_closest_point(argv[1], argv[2]);
 
 	return 0;
 
