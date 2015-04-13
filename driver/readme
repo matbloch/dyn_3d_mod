@@ -1,5 +1,4 @@
-place under:
-/opt/ros/hydro/share/freenect_launch/launch
-
 run:
-roslaunch freenect_launch multi_launch.launch
+`$ roslaunch dyn_3d_mod multi_launch.launch`
+
+the topics will be published under: `/camera1/` and `/camera2/`
