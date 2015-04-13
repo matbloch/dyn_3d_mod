@@ -17,7 +17,6 @@
 #include "../lib/definitions.h"
 #include "../lib/filters.h"	  // image filters
 
-#include "pcl_connector.cpp"	  // image filters
 
 namespace
 {
@@ -40,8 +39,9 @@ int main(int argc, char** argv)
 
     desc.add_options()
       ("help,h", "Print help messages") // can use -h
-      ("cv,c", "Perform OpenCV tests")	// display the depth stream
-      ("pcl,p", "Display point cloud");
+      ("cv,c", "Perform OpenCV tests")
+      ("display,d", "Display the point cloud and the depth image")
+      ("pcl,p", "Perform PCL tests");
 
     po::variables_map vm;
 
@@ -118,16 +118,21 @@ int main(int argc, char** argv)
 
     }else if(vm.count("pcl")){
 
+
+
+    }else if(vm.count("display")){
+
+    	/*
+    	 * Display the point cloud and the depth image
+    	 */
+
 		CameraConnector cam(true);
+		cam.show_pc(true);
+		cam.show_color(true);
+		cam.show_depth(true);
 
 		while (ros::ok())
 		{
-
-			/*
-			 * perform pcl tests
-			 *
-			 */
-
 			ros::spinOnce();
 			r.sleep();
 
