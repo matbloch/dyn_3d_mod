@@ -86,15 +86,11 @@ int main(int argc, char** argv)
 	ros::init(argc, argv, "dyn_3d_photo");
 	ros::NodeHandle nh;
 
-
 	// define subscribers
-	message_filters::Subscriber<sensor_msgs::PointCloud2> depth_sub_1(nh, "/camera1/depth/image", 1);
-	message_filters::Subscriber<sensor_msgs::PointCloud2> depth_sub_2(nh, "/camera2/depth/image", 1);
+	message_filters::Subscriber<sensor_msgs::Image> depth_sub_1(nh, "/camera1/depth/image", 1);
+	message_filters::Subscriber<sensor_msgs::Image> depth_sub_2(nh, "/camera2/depth/image", 1);
 
 	// callback if message with same timestaps are received (buffer length: 10)
-	sensor_msgs::ImageConstPtr
-
-	//The policy merges kinect messages with approximately equal timestamp into one callback
 	typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image,
 	                                                        sensor_msgs::Image>
 	SyncPolicy;
@@ -105,7 +101,7 @@ int main(int argc, char** argv)
 	sync.registerCallback(boost::bind(&preprocessing_callback, _1, _2));
 
 	// register publisher for the merged clouds
-	pub_ = nh.advertise<sensor_msgs::PointCloud2>(ros::this_node::getName() + "/preprocessed_data", 1);
+	pub_ = nh.advertise<sensor_msgs::Image>(ros::this_node::getName() + "/preprocessed_data", 1);
 
 	ROS_INFO("Preprocessing node initalized.");
 
