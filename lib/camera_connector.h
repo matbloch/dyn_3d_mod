@@ -73,10 +73,16 @@ class CameraConnector
 		bool display_color_image;
 		bool display_depth_image;
 		bool display_cloud;
-
+		bool enable_depth_registration;
 
 	CameraConnector(bool flag);	// the point cloud topic to subscribe to
 	~CameraConnector();
+
+	/* start camera */
+	void start();
+
+	/* settings */
+	void depth_registration(bool use);
 
 	/* message callbacks */
 	void depth_image_callback( const sensor_msgs::ImageConstPtr& msg );
@@ -108,23 +114,14 @@ CameraConnector::CameraConnector(
 	nh_("~")	// node handle
 {
 
-  // init status
+  // init default
   running = false;
   pc_running = false;
   display_color_image = false;
   display_cloud = false;
+  enable_depth_registration = false;
 
   SAVE_CLOUD = false;
-
-  // Create image subscribers
-  image_depth_sub_ = it_.subscribe("/camera/depth/image", 1, &CameraConnector::depth_image_callback, this);
-  image_color_sub_ = it_.subscribe("/camera/rgb/image_raw", 1, &CameraConnector::color_image_callback, this);
-
-  // Subscribe to depth point cloud
-  pc_sub_ = nh_.subscribe("/camera/depth/points", 1, &CameraConnector::pc_callback, this);
-
-  ROS_INFO("Waiting to receive camera stream...");
-  display_help();
 
 }
 
@@ -132,6 +129,38 @@ CameraConnector::~CameraConnector(){
 	cv::destroyWindow(OPENCV_WINDOW_COLOR);
 	cv::destroyWindow(OPENCV_WINDOW_DEPTH);
 }
+
+void CameraConnector::start(){
+
+	// Create image subscribers
+	//image_depth_sub_ = it_.subscribe("/camera1/depth/image", 1, &CameraConnector::depth_image_callback, this);
+	if(enable_depth_registration){
+	  // Raw image from device. Contains uint16 depths in mm.
+	  image_depth_sub_ = it_.subscribe("/camera1/depth_registered/image_raw", 1, &CameraConnector::depth_image_callback, this);
+	}else{
+	  // Raw image from device. Contains uint16 depths in mm.
+	  image_depth_sub_ = it_.subscribe("/camera1/depth/image_raw", 1, &CameraConnector::depth_image_callback, this);
+	}
+
+	image_color_sub_ = it_.subscribe("/camera/rgb/image_raw", 1, &CameraConnector::color_image_callback, this);
+
+	// Subscribe to depth point cloud
+	pc_sub_ = nh_.subscribe("/camera/depth/points", 1, &CameraConnector::pc_callback, this);
+
+	ROS_INFO("Waiting to receive camera stream...");
+	std::cout << GREEN << "--- Depth registration is enabled. Make sure you run the correct driver settings." << RESET << endl;
+	display_help();
+
+}
+
+/* ========================================== *\
+ * 		SETTINGS
+\* ========================================== */
+
+void CameraConnector::depth_registration(bool use){
+	enable_depth_registration = use;
+}
+
 
 /* ========================================== *\
  * 		MESSAGE CALLBACKS

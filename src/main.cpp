@@ -127,9 +127,11 @@ int main(int argc, char** argv)
     	 */
 
 		CameraConnector cam(true);
-		cam.show_pc(true);
+		//cam.show_pc(true);
+		cam.depth_registration(true);
 		cam.show_color(true);
 		cam.show_depth(true);
+		cam.start();
 
 		while (ros::ok())
 		{
