@@ -1,232 +1,332 @@
 #include <ros/ros.h>
+#include <ros/package.h>
 #include <image_transport/image_transport.h>
-#include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
+#include <iostream>
 
-// OpenCV includes
-#include <opencv2/nonfree/features2d.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
-
-// PCL
+// PCL specific includes
+#include <pcl/io/pcd_io.h>
+#include <pcl/io/ply_io.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <pcl/visualization/cloud_viewer.h>
 #include <pcl/point_cloud.h>
 
-// Message filters
-#include <message_filters/subscriber.h>
-#include <message_filters/time_synchronizer.h>
-#include <sensor_msgs/Image.h>
-#include <sensor_msgs/CameraInfo.h>
-#include <message_filters/sync_policies/exact_time.h>		// exact time synchronization
-#include <message_filters/sync_policies/approximate_time.h>	// approximate time synchronization
+// features
+#include <pcl/features/normal_3d.h>
+#include <pcl/features/pfh.h>
+#include <pcl/features/shot.h>
 
-// globals
-bool display_features = true;
-bool display_matched_features = true;
+// filtering/downsampling
+#include <pcl/point_types.h>
+#include <pcl/filters/voxel_grid.h>
 
-using namespace sensor_msgs;
-using namespace message_filters;
+// correspondences
+#include <pcl/correspondence.h>
+#include <pcl/recognition/cg/geometric_consistency.h>
 
+// RANSAC
+#include <pcl/registration/sample_consensus_prerejective.h>
 
-void calibration_callback(
-		const sensor_msgs::ImageConstPtr& d1, const sensor_msgs::ImageConstPtr& d2,
-		const sensor_msgs::ImageConstPtr& c1,const sensor_msgs::ImageConstPtr& c2,
-		const sensor_msgs::PointCloud2ConstPtr& cloud1, const sensor_msgs::PointCloud2ConstPtr& cloud2)
-{
-
-	/*
-	 * TODO:
-	 * - Subscribe to both depth, color and point cloud streams
-	 * 0. Do conversions
-	 * 1. Wait for key to take snapshot of registered depth streams
-	 * 2. Convert color images to greyscale
-	 * 3. Detect (SIFT/FAST) in greyscale images
-	 * 3.1 Display detected features l/r
-	 * 4. Find corresponding features
-	 * 4.1 Display corresponding features l/r lines
-	 * 5. Get depth values corresponding the the matching features (read out depth values at feature position)
-	 * 6. Calculate Transformation (Rotation & Translation) using RANSAC
-	 * 7. Transform point cloud with RANSAC approximation
-	 * 8. Use IPC to refine first guess and calculate second transformation
-	 */
-
-
-	std::cout << "1111" << std::endl;
-
-	// allocate memory
-	cv_bridge::CvImagePtr d1_ptr, d2_ptr, c1_ptr, c2_ptr;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1_ptr(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2_ptr(new pcl::PointCloud<pcl::PointXYZ>);
-
-    /* ========================================== *\
-     * 		0. OpenCV & PCL conversion
-    \* ========================================== */
-
-	// Convert images to CV images
-    try
-    {
-      d1_ptr = cv_bridge::toCvCopy(d1, sensor_msgs::image_encodings::TYPE_32FC1);
-      d2_ptr = cv_bridge::toCvCopy(d2, sensor_msgs::image_encodings::TYPE_32FC1);
-      d1_ptr = cv_bridge::toCvCopy(d1, sensor_msgs::image_encodings::BGR8);
-      d2_ptr = cv_bridge::toCvCopy(d2, sensor_msgs::image_encodings::BGR8);
-    }
-    catch (cv_bridge::Exception& e)
-    {
-      ROS_ERROR("cv_bridge exception: %s", e.what());
-      return;
-    }
-
-    // Convert point clouds to PCL format
-	pcl::fromROSMsg(*cloud1, *cloud1_ptr);
-	pcl::fromROSMsg(*cloud2, *cloud2_ptr);
-
-	return;
-
-    /* ========================================== *\
-     * 		0.1 Waiting to take snapshot
-    \* ========================================== */
-
-		// display images
-
-		// wait for key
-
-    /* ========================================== *\
-     * 		1.Convert to greyscale
-    \* ========================================== */
-
-
-
-    /* ========================================== *\
-     * 		2. Feature detection
-    \* ========================================== */
-
-	/*
-	cv::SiftFeatureDetector detector;
-	std::vector<cv::KeyPoint> keypoints1, keypoints2;
-
-	// detect features
-	detector.detect(gs1,keypoints1);
-	detector.detect(gs2,keypoints2);
-
-	// display results
-	if(display_features){
-		cv::Mat output1, output2;
-		cv::drawKeypoints(gs1, keypoints1, output1);
-		cv::drawKeypoints(gs2, keypoints2, output2);
-		cv::imshow('Features', output1);
-		cv::waitKey(0);
-		cv::imshow('Features', output2);
-		cv::waitKey(0);
-	}
-	*/
-
-    /* ========================================== *\
-     * 		3. Feature matching
-    \* ========================================== */
-
-
-    /* ========================================== *\
-     * 		4. Publishing
-    \* ========================================== */
-
-	// convert back to ROS message
-    //pcl::toROSMsg(output_pcl, output);
-
-    // publish the concatenated point cloud
-    //pub_.publish(output);
-
-}
-
-
-void calibration_callback2(
-		const sensor_msgs::ImageConstPtr& d1,
-		const sensor_msgs::ImageConstPtr& c2)
-{
-	std::cout << "its working!" << std::endl;
-}
-
+// ICP
+#include <pcl/registration/icp.h>
 
 int main(int argc, char** argv)
 {
+
 	/*
-	 * INPUT: camera streams (sensor image msg)
-	 * OUTPUT: synced, aligned voxel structure (CV::Mat)
+	 * WORKPACKAGES
 	 *
+	 * 1. Downsample point clouds
+	 * 2. Calculate normals
+	 * 3. Detect SHOT features
+	 * 4. Match descriptors
+	 * 5. Estimate transformation using RANSAC
+	 * 6. Apply approximated transformation to original cloud
+	 * 7. Refine alignment using ICP
+	 * 8. Combine transformations
 	 */
 
-	ros::init(argc, argv, "dyn_3d_photo");
-	ros::NodeHandle nh_;
-	image_transport::ImageTransport it_(nh_);
+	/* ========================================== *\
+	 * 		HELP
+	\* ========================================== */
 
-    /* ========================================== *\
-     * 		6
-    \* ========================================== */
+	if(argc<4 || argv[1] == std::string("help")){
+		std::cout<<"\n";
+		std::cout << "=================================" << std::endl;
+		std::cout << " USAGE:" << std::endl;
+		std::cout << "---------------------------------" << std::endl;
+		std::cout << " --file1 (relative to /recordings)" << std::endl;
+		std::cout << " --file2 (relative to /recordings)" << std::endl;
+		std::cout << " --leaf_size (in meters)" << std::endl;
+		std::cout << "=================================" << std::endl;
+		std::cout<<"\n";
+	}
 
-	/*
-	// define subscribers
-	message_filters::Subscriber<sensor_msgs::PointCloud2> pc_sub_1(nh_, "/camera1/depth/points", 1);
-	message_filters::Subscriber<sensor_msgs::PointCloud2> pc_sub_2(nh_, "/camera2/depth/points", 1);
-	message_filters::Subscriber<sensor_msgs::Image> depth_sub_1( nh_, "/camera1/depth/image", 1 );
-	message_filters::Subscriber<sensor_msgs::Image> depth_sub_2( nh_, "/camera2/depth/image", 1 );
-	message_filters::Subscriber<sensor_msgs::Image> color_sub_1( nh_, "/camera1/rgb/image_color", 1 );
-	message_filters::Subscriber<sensor_msgs::Image> color_sub_2( nh_, "/camera2/rgb/image_color", 1 );
+	/* ========================================== *\
+	 * 		LOAD CLOUDS
+	\* ========================================== */
 
-	typedef message_filters::sync_policies::ApproximateTime<
-			sensor_msgs::Image,sensor_msgs::Image,
-			sensor_msgs::Image,sensor_msgs::Image,
-			sensor_msgs::PointCloud2,sensor_msgs::PointCloud2>
-	ApproximateSyncPolicy;
+	// Object for storing the point cloud.
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2(new pcl::PointCloud<pcl::PointXYZ>);
 
-	typedef message_filters::sync_policies::ExactTime<
-			sensor_msgs::Image,sensor_msgs::Image,
-			sensor_msgs::Image,sensor_msgs::Image,
-			sensor_msgs::PointCloud2,sensor_msgs::PointCloud2>
-	ExactSyncPolicy;
+	if (pcl::io::loadPCDFile<pcl::PointXYZ>(ros::package::getPath("dyn_3d_mod") + "/recordings/" + argv[1], *cloud1) != 0)
+	{
+		return -1;
+	}
+	if (pcl::io::loadPCDFile<pcl::PointXYZ>(ros::package::getPath("dyn_3d_mod") + "/recordings/" + argv[2], *cloud2) != 0)
+	{
+		return -1;
+	}
 
+	/* ========================================== *\
+	 * 		1. DOWNSAMPLING
+	\* ========================================== */
 
-	// ExactTime takes a queue size as its constructor argument, hence MySyncPolicy(10)
-	message_filters::Synchronizer<ApproximateSyncPolicy> sync(ApproximateSyncPolicy(10),
-			depth_sub_1, depth_sub_2,
-			color_sub_1, color_sub_2,
-			pc_sub_1, pc_sub_2);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr filteredCloud1(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr filteredCloud2(new pcl::PointCloud<pcl::PointXYZ>);
 
-	// bind callback
-	sync.registerCallback(boost::bind(&calibration_callback, _1, _2, _3, _4, _5, _6));
-	*/
-
-
-
-    /* ========================================== *\
-     * 		2 - WORKING
-    \* ========================================== */
+	pcl::VoxelGrid<pcl::PointXYZ> filter;
 
 
-	message_filters::Subscriber<sensor_msgs::Image> depth_sub_1( nh_, "/camera1/depth_registered/image_raw", 1 );
-	message_filters::Subscriber<sensor_msgs::Image> depth_sub_2( nh_, "/camera2/depth_registered/image_raw", 1 );
-	message_filters::Subscriber<sensor_msgs::Image> color_sub_1( nh_, "/camera1/rgb/image_color", 1 );
-	message_filters::Subscriber<sensor_msgs::Image> color_sub_2( nh_, "/camera2/rgb/image_color", 1 );
+	float leaf_size;	// leaf size in m (only one point per {leaf_size} every cubic m will survive).
+	leaf_size = std::atof(argv[3]);
+	std::cout << "--- Setting leaf size to " << argv[3] << " meters" << std::endl;
 
-	typedef message_filters::sync_policies::ApproximateTime<
-			sensor_msgs::Image,
-			sensor_msgs::Image>
-	ApproximateSyncPolicy;
+	filter.setLeafSize(leaf_size,leaf_size,leaf_size);
+
+	// filter first cloud
+	filter.setInputCloud(cloud1);
+	filter.filter(*filteredCloud1);
+
+	// filter second cloud
+	filter.setInputCloud(cloud2);
+	filter.filter(*filteredCloud2);
+
+	std::cout << "--- downsampling complete" << std::endl;
+
+	/* ========================================== *\
+	 * 		2. NORMAL CALUCLATION
+	\* ========================================== */
+
+	// Object for storing the normals.
+	pcl::PointCloud<pcl::Normal>::Ptr normals1(new pcl::PointCloud<pcl::Normal>);
+	pcl::PointCloud<pcl::Normal>::Ptr normals2(new pcl::PointCloud<pcl::Normal>);
+
+	// Estimate the normals.
+	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimation;
+	normalEstimation.setRadiusSearch(1);
+	pcl::search::KdTree<pcl::PointXYZ>::Ptr kdtree(new pcl::search::KdTree<pcl::PointXYZ>);
+	normalEstimation.setSearchMethod(kdtree);
+
+	// cloud 1
+	normalEstimation.setInputCloud(filteredCloud1);
+	normalEstimation.compute(*normals1);
+
+	// cloud 2
+	normalEstimation.setInputCloud(filteredCloud2);
+	normalEstimation.compute(*normals2);
+	std::cout << "--- normal calculation complete" << std::endl;
+
+	/* ========================================== *\
+	 * 		3. SHOT FEATURE DETECTION
+	\* ========================================== */
+
+	pcl::PointCloud<pcl::SHOT352>::Ptr descriptors1(new pcl::PointCloud<pcl::SHOT352>());
+	pcl::PointCloud<pcl::SHOT352>::Ptr descriptors2(new pcl::PointCloud<pcl::SHOT352>());
+
+	pcl::SHOTEstimation<pcl::PointXYZ, pcl::Normal, pcl::SHOT352> shot;
+	shot.setRadiusSearch(0.8); // The radius that defines which of the keypoint's neighbors are described. If too large, there may be clutter, and if too small, not enough points may be found.
+
+	// cloud 1
+	shot.setInputCloud(filteredCloud1);
+	shot.setInputNormals(normals1);
+	shot.compute(*descriptors1);
+
+	// cloud 2
+	shot.setInputCloud(filteredCloud2);
+	shot.setInputNormals(normals2);
+	shot.compute(*descriptors2);
+
+	std::cout << "--- feature search complete" << std::endl;
+
+	/* ========================================== *\
+	 * 		4. DESCRIPTOR MATCHING
+	\* ========================================== */
+
+	// A kd-tree object that uses the FLANN library for fast search of nearest neighbors.
+	pcl::KdTreeFLANN<pcl::SHOT352> matching;
+	matching.setInputCloud(descriptors1);
+
+	// A Correspondence object stores the indices of the query and the match,
+	// and the distance/weight.
+	pcl::CorrespondencesPtr correspondences(new pcl::Correspondences());
+
+	// Check every descriptor computed for the filteredCloud2.
+	for (size_t i = 0; i < descriptors2->size(); ++i)
+	{
+		std::vector<int> neighbors(1);
+		std::vector<float> squaredDistances(1);
+		// Ignore NaNs.
+		if (pcl_isfinite(descriptors2->at(i).descriptor[0]))
+		{
+			// Find the nearest neighbor (in descriptor space)...
+			int neighborCount = matching.nearestKSearch(descriptors2->at(i), 1, neighbors, squaredDistances);
+			// ...and add a new correspondence if the distance is less than a threshold
+			// (SHOT distances are between 0 and 1, other descriptors use different metrics).
+			if (neighborCount == 1 && squaredDistances[0] < 0.25f)
+			{
+				pcl::Correspondence correspondence(neighbors[0], static_cast<int>(i), squaredDistances[0]);
+				correspondences->push_back(correspondence);
+			}
+		}
+	}
+
+	std::cout << "--- descriptor matching complete. found " << correspondences->size() << " correspondences." << std::endl;
+
+	/* ========================================== *\
+	 * 		5. CORRESPONDENCE REJECTOR SAMPLE CONSENSUS
+	\* ========================================== */
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr alignedfilteredCloud1(new pcl::PointCloud<pcl::PointXYZ>);
 
 
-	message_filters::Synchronizer<ApproximateSyncPolicy> sync(ApproximateSyncPolicy(10),
-			depth_sub_1
-			,depth_sub_2
-			);
-	  sync.registerCallback(boost::bind(&calibration_callback2,
-			  _1
-			  ,_2
-			  ));
+	pcl::SampleConsensusPrerejective<pcl::PointXYZ, pcl::PointXYZ, pcl::SHOT352> pose;
+	pose.setInputSource(filteredCloud1);
+	pose.setInputTarget(filteredCloud2);
+	pose.setSourceFeatures(descriptors1);
+	pose.setTargetFeatures(descriptors2);
+	// Instead of matching a descriptor with its nearest neighbor, choose randomly between
+	// the N closest ones, making it more robust to outliers, but increasing time.
+	pose.setCorrespondenceRandomness(2);
+	// Set the fraction (0-1) of inlier points required for accepting a transformation.
+	// At least this number of points will need to be aligned to accept a pose.
+	pose.setInlierFraction(0.25f);
+	// Set the number of samples to use during each iteration (minimum for 6 DoF is 3).
+	pose.setNumberOfSamples(3);
+	// Set the similarity threshold (0-1) between edge lengths of the polygons. The
+	// closer to 1, the more strict the rejector will be, probably discarding acceptable poses.
+	pose.setSimilarityThreshold(0.6f);
+	// Set the maximum distance threshold between two correspondent points in source and target.
+	// If the distance is larger, the points will be ignored in the alignment process.
+	pose.setMaxCorrespondenceDistance(0.2f);
+
+	pose.align(*alignedfilteredCloud1);
+
+
+	Eigen::Matrix4f transformation;
+
+	if (pose.hasConverged())
+	{
+		transformation = pose.getFinalTransformation();
+		Eigen::Matrix3f rotation = transformation.block<3, 3>(0, 0);
+		Eigen::Vector3f translation = transformation.block<3, 1>(0, 3);
+
+		std::cout << "Transformation matrix:" << std::endl << std::endl;
+		printf("\t\t    | %6.3f %6.3f %6.3f | \n", rotation(0, 0), rotation(0, 1), rotation(0, 2));
+		printf("\t\tR = | %6.3f %6.3f %6.3f | \n", rotation(1, 0), rotation(1, 1), rotation(1, 2));
+		printf("\t\t    | %6.3f %6.3f %6.3f | \n", rotation(2, 0), rotation(2, 1), rotation(2, 2));
+		std::cout << std::endl;
+		printf("\t\tt = < %0.3f, %0.3f, %0.3f >\n", translation(0), translation(1), translation(2));
+	}
+	else{
+		std::cout << "--- RANSAC did not converge." << std::endl;
+		return -1;
+	}
+
+	/* ========================================== *\
+	 * 		6. APPLY TRANSFORMATION ON ORIGINAL CLOUD
+	\* ========================================== */
+
+	  pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud (new pcl::PointCloud<pcl::PointXYZ> ());
+	  pcl::transformPointCloud (*filteredCloud1, *transformed_cloud, transformation);
+
+	/* ========================================== *\
+	 * 		VISUALIZE SUBRESULT
+	\* ========================================== */
+
+	pcl::visualization::PCLVisualizer viewer_ ("Prealignement using SHOT feature matching & RANSAC");
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> source_cloud_color_handler (cloud1, 0, 0, 255);
+	viewer_.addPointCloud (filteredCloud2, source_cloud_color_handler, "original_cloud");
+
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> transformed_cloud_color_handler (cloud2, 230, 20, 20);
+	viewer_.addPointCloud (transformed_cloud, transformed_cloud_color_handler, "transformed_cloud");
+
+	while (!viewer_.wasStopped ()) { // Display the visualiser until 'q' key is pressed
+		viewer_.spinOnce ();
+	}
+
+	/* ========================================== *\
+	 * 		7. ICP REFINEMENT
+	\* ========================================== */
+
+	// use iterative closet point
+	pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
+
+	// final result
+	pcl::PointCloud<pcl::PointXYZ> Final;
+
+	// do alignment
+	icp.setMaximumIterations (100);
+	//icp.setMaxCorrespondenceDistance (0.1);
+	icp.setInputSource(transformed_cloud);
+	icp.setInputTarget(filteredCloud2);
+	icp.align(Final);
+
+
+	std::cout << "has converged:" << icp.hasConverged() << " score: " << icp.getFitnessScore() << std::endl;
+
+
+	Eigen::Matrix4f transformation2;
+
+	if (icp.hasConverged())
+	{
+		transformation2 = icp.getFinalTransformation ();
+		Eigen::Matrix3f rotation2 = transformation2.block<3, 3>(0, 0);
+		Eigen::Vector3f translation2 = transformation2.block<3, 1>(0, 3);
+
+		std::cout << "Transformation matrix:" << std::endl << std::endl;
+		printf("\t\t    | %6.3f %6.3f %6.3f | \n", rotation2(0, 0), rotation2(0, 1), rotation2(0, 2));
+		printf("\t\tR = | %6.3f %6.3f %6.3f | \n", rotation2(1, 0), rotation2(1, 1), rotation2(1, 2));
+		printf("\t\t    | %6.3f %6.3f %6.3f | \n", rotation2(2, 0), rotation2(2, 1), rotation2(2, 2));
+		std::cout << std::endl;
+		printf("\t\tt = < %0.3f, %0.3f, %0.3f >\n", translation2(0), translation2(1), translation2(2));
+	}
+	else{
+		std::cout << "ICP Did not converge." << std::endl;
+		return -1;
+	}
+
+	/* ========================================== *\
+	 * 		APPLY 2nd TRANSFORMATION
+	\* ========================================== */
+
+	  // Executing the transformation
+	  pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud2 (new pcl::PointCloud<pcl::PointXYZ> ());
+
+	  // apply both transformation to the original cloud
+	  pcl::transformPointCloud (*transformed_cloud, *transformed_cloud2, transformation2);
+
+
+	/* ========================================== *\
+	 * 		VISUALIZE END RESULT
+	\* ========================================== */
+
+	pcl::visualization::PCLVisualizer viewer2_ ("END RESULT");
+
+	viewer2_.addPointCloud (filteredCloud2, source_cloud_color_handler, "original_cloud");
+	viewer2_.addPointCloud (transformed_cloud2, transformed_cloud_color_handler, "transformed_cloud");
+
+	while (!viewer2_.wasStopped ()) {
+		viewer2_.spinOnce ();
+	}
+
+	/* ========================================== *\
+	 * 		8. COMBINE TRANSFORMATIONS
+	\* ========================================== */
 
 
 
-	ROS_INFO("Configuration node initialized");
+	return 0;
 
-
-	  ros::spin();
-
-	  return 0;
 }
