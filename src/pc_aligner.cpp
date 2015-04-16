@@ -30,148 +30,229 @@
 // ICP
 #include <pcl/registration/icp.h>
 
-int main(int argc, char** argv)
+class PCAligner
+{
+  public:
+    // A bit of shorthand
+
+    // type definitions
+	typedef pcl::PointCloud<pcl::PointXYZ> PCXYZ;
+	typedef pcl::PointCloud<pcl::Normal> normal;
+	typedef pcl::PointCloud<pcl::SHOT352> SHOTFEATURE;
+
+
+	PCAligner();
+	~PCAligner();
+
+
+    void setInputClouds (PCXYZ::Ptr c1, PCXYZ::Ptr c2);
+
+  protected:
+
+    /* processing functions */
+    void startAlignment ()
+    {
+
+		filterClouds();
+		computeNormals ();
+		detectSHOTFeatures();
+		matchSHOTDescriptors();
+
+		if(SampleConsensus() != 0){
+			return;
+		}
+
+		ICPRefinement();
+    }
+
+    void filterClouds ();
+    void computeNormals ();
+    void detectSHOTFeatures ();
+    void matchSHOTDescriptors();
+    int SampleConsensus();
+    int ICPRefinement();
+
+    /* data extraction */
+    Eigen::Matrix4f getFinalTransformation();
+
+
+  private:
+
+	// input clouds
+	PCXYZ::Ptr cloud1_;
+	PCXYZ::Ptr cloud2_;
+
+	// downsampled clouds
+	PCXYZ::Ptr filtered_cloud1_;
+	PCXYZ::Ptr filtered_cloud2_;
+
+	// normals of the filtered clouds
+	normal::Ptr normals1_;
+	normal::Ptr normals2_;
+
+	// SHOT features of the filtered point clouds
+	SHOTFEATURE::Ptr shot_descriptors1_;
+	SHOTFEATURE::Ptr shot_descriptors2_;
+
+	// aligned clouds
+	PCXYZ::Ptr ransac_aligned_cloud1_;
+	PCXYZ::Ptr icp_aligned_cloud1_;
+
+	// calculated transformations
+	Eigen::Matrix4f ransac_transformation_;
+	Eigen::Matrix4f icp_transformation_;
+
+    // Parameters
+	float leaf_size_;	// downsampling size
+	float normal_est_search_radius_;
+	float shot_search_radius_;
+
+};
+
+/* ========================================== *\
+ * 		FORWARD DECLARATIONS
+\* ========================================== */
+
+
+PCAligner::PCAligner () :
+      leaf_size_ (0.2),
+      normal_est_search_radius_ (1),
+      shot_search_radius_ (0.8)
+    {
+
+}
+PCAligner::~PCAligner (){
+
+}
+
+void PCAligner::setInputClouds (PCXYZ::Ptr c1, PCXYZ::Ptr c2)
+{
+	cloud1_ = c1;
+	cloud2_ = c2;
+
+	//remove NAN points from the cloud
+	std::vector<int> indices;
+	pcl::removeNaNFromPointCloud(*cloud1_,*cloud1_, indices);
+	pcl::removeNaNFromPointCloud(*cloud2_,*cloud2_, indices);
+
+	startAlignment ();
+}
+
+/* ========================================== *\
+ * 		1. DOWNSAMPLING
+\* ========================================== */
+
+void PCAligner::filterClouds ()
 {
 
-	/*
-	 * WORKPACKAGES
-	 *
-	 * 1. Downsample point clouds
-	 * 2. Calculate normals
-	 * 3. Detect SHOT features
-	 * 4. Match descriptors
-	 * 5. Estimate transformation using RANSAC
-	 * 6. Apply approximated transformation to original cloud
-	 * 7. Refine alignment using ICP
-	 * 8. Combine transformations
-	 */
 
-	/* ========================================== *\
-	 * 		HELP
-	\* ========================================== */
-
-	if(argc<4 || argv[1] == std::string("help")){
-		std::cout<<"\n";
-		std::cout << "=================================" << std::endl;
-		std::cout << " USAGE:" << std::endl;
-		std::cout << "---------------------------------" << std::endl;
-		std::cout << " --file1 (relative to /recordings)" << std::endl;
-		std::cout << " --file2 (relative to /recordings)" << std::endl;
-		std::cout << " --leaf_size (in meters)" << std::endl;
-		std::cout << "=================================" << std::endl;
-		std::cout<<"\n";
-	}
-
-	/* ========================================== *\
-	 * 		LOAD CLOUDS
-	\* ========================================== */
-
-	// Object for storing the point cloud.
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2(new pcl::PointCloud<pcl::PointXYZ>);
-
-	if (pcl::io::loadPCDFile<pcl::PointXYZ>(ros::package::getPath("dyn_3d_mod") + "/recordings/" + argv[1], *cloud1) != 0)
-	{
-		return -1;
-	}
-	if (pcl::io::loadPCDFile<pcl::PointXYZ>(ros::package::getPath("dyn_3d_mod") + "/recordings/" + argv[2], *cloud2) != 0)
-	{
-		return -1;
-	}
-
-	/* ========================================== *\
-	 * 		1. DOWNSAMPLING
-	\* ========================================== */
-
-	pcl::PointCloud<pcl::PointXYZ>::Ptr filteredCloud1(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr filteredCloud2(new pcl::PointCloud<pcl::PointXYZ>);
+	filtered_cloud1_ = PCXYZ::Ptr (new PCXYZ);
+	filtered_cloud2_ = PCXYZ::Ptr (new PCXYZ);
 
 	pcl::VoxelGrid<pcl::PointXYZ> filter;
+	filter.setLeafSize(leaf_size_,leaf_size_,leaf_size_);
 
-
-	float leaf_size;	// leaf size in m (only one point per {leaf_size} every cubic m will survive).
-	leaf_size = std::atof(argv[3]);
-	std::cout << "--- Setting leaf size to " << argv[3] << " meters" << std::endl;
-
-	filter.setLeafSize(leaf_size,leaf_size,leaf_size);
 
 	// filter first cloud
-	filter.setInputCloud(cloud1);
-	filter.filter(*filteredCloud1);
+	filter.setInputCloud(cloud1_);
+	filter.filter(*filtered_cloud1_);
 
 	// filter second cloud
-	filter.setInputCloud(cloud2);
-	filter.filter(*filteredCloud2);
+	filter.setInputCloud(cloud2_);
+	filter.filter(*filtered_cloud2_);
 
 	std::cout << "--- downsampling complete" << std::endl;
 
-	/* ========================================== *\
-	 * 		2. NORMAL CALUCLATION
-	\* ========================================== */
+}
 
-	// Object for storing the normals.
-	pcl::PointCloud<pcl::Normal>::Ptr normals1(new pcl::PointCloud<pcl::Normal>);
-	pcl::PointCloud<pcl::Normal>::Ptr normals2(new pcl::PointCloud<pcl::Normal>);
+/* ========================================== *\
+ * 		2. NORMAL CALCULATION
+\* ========================================== */
 
-	// Estimate the normals.
-	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimation;
-	normalEstimation.setRadiusSearch(1);
+void PCAligner::computeNormals(){
+
+	normals1_ = normal::Ptr (new normal);
+	normals2_ = normal::Ptr (new normal);
+
+	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> norm_est;
+
 	pcl::search::KdTree<pcl::PointXYZ>::Ptr kdtree(new pcl::search::KdTree<pcl::PointXYZ>);
-	normalEstimation.setSearchMethod(kdtree);
+	norm_est.setSearchMethod(kdtree);
+	norm_est.setRadiusSearch (normal_est_search_radius_);
 
 	// cloud 1
-	normalEstimation.setInputCloud(filteredCloud1);
-	normalEstimation.compute(*normals1);
+	norm_est.setInputCloud (filtered_cloud1_);
+	norm_est.compute (*normals1_);
 
 	// cloud 2
-	normalEstimation.setInputCloud(filteredCloud2);
-	normalEstimation.compute(*normals2);
-	std::cout << "--- normal calculation complete" << std::endl;
+	norm_est.setInputCloud (filtered_cloud2_);
+	norm_est.compute (*normals2_);
 
-	/* ========================================== *\
-	 * 		3. SHOT FEATURE DETECTION
-	\* ========================================== */
+	// Visualize them.
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("Normals"));
+	viewer->addPointCloud<pcl::PointXYZ>(filtered_cloud1_, "cloud");
+	// Display one normal out of 20, as a line of length 3cm.
+	viewer->addPointCloudNormals<pcl::PointXYZ, pcl::Normal>(filtered_cloud1_, normals1_, 4, 0.2, "normals");
+	while (!viewer->wasStopped())
+	{
+	viewer->spinOnce(100);
+	boost::this_thread::sleep(boost::posix_time::microseconds(100000));
+	}
 
-	pcl::PointCloud<pcl::SHOT352>::Ptr descriptors1(new pcl::PointCloud<pcl::SHOT352>());
-	pcl::PointCloud<pcl::SHOT352>::Ptr descriptors2(new pcl::PointCloud<pcl::SHOT352>());
+}
 
-	pcl::SHOTEstimation<pcl::PointXYZ, pcl::Normal, pcl::SHOT352> shot;
-	shot.setRadiusSearch(0.8); // The radius that defines which of the keypoint's neighbors are described. If too large, there may be clutter, and if too small, not enough points may be found.
+/* ========================================== *\
+ * 		3. SHOT FEATURE DETECTION
+\* ========================================== */
+
+void PCAligner::detectSHOTFeatures ()
+{
+
+	pcl::SHOTEstimation<pcl::PointXYZ, pcl::Normal, pcl::SHOT352> shot_est;
+	shot_est.setRadiusSearch(shot_search_radius_);
+
+	shot_descriptors1_ = SHOTFEATURE::Ptr (new SHOTFEATURE);
+	shot_descriptors2_ = SHOTFEATURE::Ptr (new SHOTFEATURE);
 
 	// cloud 1
-	shot.setInputCloud(filteredCloud1);
-	shot.setInputNormals(normals1);
-	shot.compute(*descriptors1);
+	shot_est.setInputCloud(filtered_cloud1_);
+	shot_est.setInputNormals(normals1_);
+	shot_est.compute(*shot_descriptors1_);
 
 	// cloud 2
-	shot.setInputCloud(filteredCloud2);
-	shot.setInputNormals(normals2);
-	shot.compute(*descriptors2);
+	shot_est.setInputCloud(filtered_cloud2_);
+	shot_est.setInputNormals(normals2_);
+	shot_est.compute(*shot_descriptors2_);
 
 	std::cout << "--- feature search complete" << std::endl;
 
-	/* ========================================== *\
-	 * 		4. DESCRIPTOR MATCHING
-	\* ========================================== */
+}
+
+
+/* ========================================== *\
+ * 		4. DESCRIPTOR MATCHING
+\* ========================================== */
+
+void PCAligner::matchSHOTDescriptors (){
 
 	// A kd-tree object that uses the FLANN library for fast search of nearest neighbors.
 	pcl::KdTreeFLANN<pcl::SHOT352> matching;
-	matching.setInputCloud(descriptors1);
+	matching.setInputCloud(shot_descriptors1_);
 
 	// A Correspondence object stores the indices of the query and the match,
 	// and the distance/weight.
 	pcl::CorrespondencesPtr correspondences(new pcl::Correspondences());
 
 	// Check every descriptor computed for the filteredCloud2.
-	for (size_t i = 0; i < descriptors2->size(); ++i)
+	for (size_t i = 0; i < shot_descriptors2_->size(); ++i)
 	{
 		std::vector<int> neighbors(1);
 		std::vector<float> squaredDistances(1);
 		// Ignore NaNs.
-		if (pcl_isfinite(descriptors2->at(i).descriptor[0]))
+		if (pcl_isfinite(shot_descriptors2_->at(i).descriptor[0]))
 		{
 			// Find the nearest neighbor (in descriptor space)...
-			int neighborCount = matching.nearestKSearch(descriptors2->at(i), 1, neighbors, squaredDistances);
+			int neighborCount = matching.nearestKSearch(shot_descriptors2_->at(i), 1, neighbors, squaredDistances);
 			// ...and add a new correspondence if the distance is less than a threshold
 			// (SHOT distances are between 0 and 1, other descriptors use different metrics).
 			if (neighborCount == 1 && squaredDistances[0] < 0.25f)
@@ -183,44 +264,46 @@ int main(int argc, char** argv)
 	}
 
 	std::cout << "--- descriptor matching complete. found " << correspondences->size() << " correspondences." << std::endl;
-
-	/* ========================================== *\
-	 * 		5. CORRESPONDENCE REJECTOR SAMPLE CONSENSUS
-	\* ========================================== */
-
-	pcl::PointCloud<pcl::PointXYZ>::Ptr alignedfilteredCloud1(new pcl::PointCloud<pcl::PointXYZ>);
+}
 
 
-	pcl::SampleConsensusPrerejective<pcl::PointXYZ, pcl::PointXYZ, pcl::SHOT352> pose;
-	pose.setInputSource(filteredCloud1);
-	pose.setInputTarget(filteredCloud2);
-	pose.setSourceFeatures(descriptors1);
-	pose.setTargetFeatures(descriptors2);
+/* ========================================== *\
+ * 		5. SAMPLE CONSENSUS
+\* ========================================== */
+
+int PCAligner::SampleConsensus(){
+
+	PCXYZ::Ptr aligned_filtered_cloud1 = PCXYZ::Ptr (new PCXYZ);
+
+	pcl::SampleConsensusPrerejective<pcl::PointXYZ, pcl::PointXYZ, pcl::SHOT352> ransac;
+
+	ransac.setInputSource(filtered_cloud1_);	// calculate transformation from alignment of filtered cloud 1 to filtered cloud 2
+	ransac.setSourceFeatures(shot_descriptors1_);
+	ransac.setInputTarget(filtered_cloud2_);
+	ransac.setTargetFeatures(shot_descriptors2_);
+
 	// Instead of matching a descriptor with its nearest neighbor, choose randomly between
 	// the N closest ones, making it more robust to outliers, but increasing time.
-	pose.setCorrespondenceRandomness(2);
+	ransac.setCorrespondenceRandomness(2);
 	// Set the fraction (0-1) of inlier points required for accepting a transformation.
 	// At least this number of points will need to be aligned to accept a pose.
-	pose.setInlierFraction(0.25f);
+	ransac.setInlierFraction(0.25f);
 	// Set the number of samples to use during each iteration (minimum for 6 DoF is 3).
-	pose.setNumberOfSamples(3);
+	ransac.setNumberOfSamples(3);
 	// Set the similarity threshold (0-1) between edge lengths of the polygons. The
 	// closer to 1, the more strict the rejector will be, probably discarding acceptable poses.
-	pose.setSimilarityThreshold(0.6f);
+	ransac.setSimilarityThreshold(0.6f);
 	// Set the maximum distance threshold between two correspondent points in source and target.
 	// If the distance is larger, the points will be ignored in the alignment process.
-	pose.setMaxCorrespondenceDistance(0.2f);
+	ransac.setMaxCorrespondenceDistance(0.2f);
 
-	pose.align(*alignedfilteredCloud1);
+	ransac.align(*aligned_filtered_cloud1); // BEFORE ransac.hasConverged() !
 
-
-	Eigen::Matrix4f transformation;
-
-	if (pose.hasConverged())
+	if (ransac.hasConverged())
 	{
-		transformation = pose.getFinalTransformation();
-		Eigen::Matrix3f rotation = transformation.block<3, 3>(0, 0);
-		Eigen::Vector3f translation = transformation.block<3, 1>(0, 3);
+		ransac_transformation_ = ransac.getFinalTransformation();
+		Eigen::Matrix3f rotation = ransac_transformation_.block<3, 3>(0, 0);
+		Eigen::Vector3f translation = ransac_transformation_.block<3, 1>(0, 3);
 
 		std::cout << "Transformation matrix:" << std::endl << std::endl;
 		printf("\t\t    | %6.3f %6.3f %6.3f | \n", rotation(0, 0), rotation(0, 1), rotation(0, 2));
@@ -234,56 +317,64 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
-	/* ========================================== *\
-	 * 		6. APPLY TRANSFORMATION ON ORIGINAL CLOUD
-	\* ========================================== */
 
-	  pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud (new pcl::PointCloud<pcl::PointXYZ> ());
-	  pcl::transformPointCloud (*filteredCloud1, *transformed_cloud, transformation);
+	// apply transformation on original cloud
+	ransac_aligned_cloud1_ = PCXYZ::Ptr (new PCXYZ);
+	pcl::transformPointCloud (*cloud1_, *ransac_aligned_cloud1_, ransac_transformation_);
 
-	/* ========================================== *\
-	 * 		VISUALIZE SUBRESULT
-	\* ========================================== */
 
+	// visualize sub result
 	pcl::visualization::PCLVisualizer viewer_ ("Prealignement using SHOT feature matching & RANSAC");
-	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> source_cloud_color_handler (cloud1, 0, 0, 255);
-	viewer_.addPointCloud (filteredCloud2, source_cloud_color_handler, "original_cloud");
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> source_cloud_color_handler (cloud1_, 0, 0, 255);
+	viewer_.addPointCloud (cloud2_, source_cloud_color_handler, "original cloud");
 
-	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> transformed_cloud_color_handler (cloud2, 230, 20, 20);
-	viewer_.addPointCloud (transformed_cloud, transformed_cloud_color_handler, "transformed_cloud");
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> transformed_cloud_color_handler (cloud2_, 230, 20, 20);
+	viewer_.addPointCloud (ransac_aligned_cloud1_, transformed_cloud_color_handler, "RANSAC aligned cloud");
 
 	while (!viewer_.wasStopped ()) { // Display the visualiser until 'q' key is pressed
 		viewer_.spinOnce ();
 	}
 
-	/* ========================================== *\
-	 * 		7. ICP REFINEMENT
-	\* ========================================== */
+	return 0;
+
+}
+
+
+/* ========================================== *\
+ * 		7. ICP REFINEMENT
+\* ========================================== */
+
+int PCAligner::ICPRefinement(){
+
 
 	// use iterative closet point
 	pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
 
-	// final result
-	pcl::PointCloud<pcl::PointXYZ> Final;
-
 	// do alignment
 	icp.setMaximumIterations (100);
 	//icp.setMaxCorrespondenceDistance (0.1);
-	icp.setInputSource(transformed_cloud);
-	icp.setInputTarget(filteredCloud2);
-	icp.align(Final);
+	icp.setInputSource(ransac_aligned_cloud1_);
+	icp.setInputTarget(cloud2_);
+
+
+	/* only consider points up to 3.5m */
+	/*
+	icp.setFilterFieldName("z");
+	icp.setFilterLimits(3.5);
+	*/
+
+	// align clouds
+	pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud2 (new pcl::PointCloud<pcl::PointXYZ> ());
+	icp.align(*transformed_cloud2); // BEFORE pose.hasConverged() !
 
 
 	std::cout << "has converged:" << icp.hasConverged() << " score: " << icp.getFitnessScore() << std::endl;
 
-
-	Eigen::Matrix4f transformation2;
-
 	if (icp.hasConverged())
 	{
-		transformation2 = icp.getFinalTransformation ();
-		Eigen::Matrix3f rotation2 = transformation2.block<3, 3>(0, 0);
-		Eigen::Vector3f translation2 = transformation2.block<3, 1>(0, 3);
+		icp_transformation_ = icp.getFinalTransformation ();
+		Eigen::Matrix3f rotation2 = icp_transformation_.block<3, 3>(0, 0);
+		Eigen::Vector3f translation2 = icp_transformation_.block<3, 1>(0, 3);
 
 		std::cout << "Transformation matrix:" << std::endl << std::endl;
 		printf("\t\t    | %6.3f %6.3f %6.3f | \n", rotation2(0, 0), rotation2(0, 1), rotation2(0, 2));
@@ -297,36 +388,53 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
-	/* ========================================== *\
-	 * 		APPLY 2nd TRANSFORMATION
-	\* ========================================== */
 
-	  // Executing the transformation
-	  pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud2 (new pcl::PointCloud<pcl::PointXYZ> ());
-
-	  // apply both transformation to the original cloud
-	  pcl::transformPointCloud (*transformed_cloud, *transformed_cloud2, transformation2);
+	// apply both transformation to the original cloud
+	icp_aligned_cloud1_ = PCXYZ::Ptr (new PCXYZ);
+	pcl::transformPointCloud (*ransac_aligned_cloud1_, *icp_aligned_cloud1_, icp_transformation_);
 
 
-	/* ========================================== *\
-	 * 		VISUALIZE END RESULT
-	\* ========================================== */
-
+	// visualize
 	pcl::visualization::PCLVisualizer viewer2_ ("END RESULT");
 
-	viewer2_.addPointCloud (filteredCloud2, source_cloud_color_handler, "original_cloud");
-	viewer2_.addPointCloud (transformed_cloud2, transformed_cloud_color_handler, "transformed_cloud");
+
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> source_cloud_color_handler (cloud1_, 0, 0, 255);
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> transformed_cloud_color_handler (cloud2_, 230, 20, 20);
+
+
+	viewer2_.addPointCloud (cloud2_, source_cloud_color_handler, "original_cloud");
+	viewer2_.addPointCloud (icp_aligned_cloud1_, transformed_cloud_color_handler, "transformed_cloud");
 
 	while (!viewer2_.wasStopped ()) {
 		viewer2_.spinOnce ();
 	}
 
-	/* ========================================== *\
-	 * 		8. COMBINE TRANSFORMATIONS
-	\* ========================================== */
-
-
-
 	return 0;
 
+}
+
+
+Eigen::Matrix4f PCAligner::getFinalTransformation(){
+
+	return icp_transformation_*ransac_transformation_;
+
+}
+
+
+int main (int argc, char **argv)
+{
+
+
+	  // Load the target cloud PCD file
+	  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1 (new pcl::PointCloud<pcl::PointXYZ>);
+	  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2 (new pcl::PointCloud<pcl::PointXYZ>);
+	  pcl::io::loadPCDFile (ros::package::getPath("dyn_3d_mod") + "/recordings/cloud1.pcd", *cloud1);
+	  pcl::io::loadPCDFile (ros::package::getPath("dyn_3d_mod") + "/recordings/cloud2.pcd", *cloud2);
+
+	  PCAligner target_cloud;
+	  //target_cloud.setInputCloud (cloud1);
+	  target_cloud.setInputClouds (cloud1, cloud2);
+
+
+  return (0);
 }
