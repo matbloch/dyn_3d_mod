@@ -58,21 +58,3 @@ int viewer(std::string filename)
 	return 0;
 
 }
-
-/* ========================================== *\
- * 		MAIN FUNCTION
-\* ========================================== */
-
-
-int main(int argc, char** argv)
-{
-
-	if(argc<2){
-		std::cout << "Please specify the input file relative to the /storage direction." << std::endl;
-	}
-
-	viewer(argv[1]);
-
-	return 0;
-
-}
