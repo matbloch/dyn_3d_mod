@@ -33,23 +33,26 @@
 class PCAligner
 {
   public:
-    // A bit of shorthand
 
     // type definitions
 	typedef pcl::PointCloud<pcl::PointXYZ> PCXYZ;
-	typedef pcl::PointCloud<pcl::Normal> normal;
+	typedef pcl::PointCloud<pcl::Normal> NORMAL;
 	typedef pcl::PointCloud<pcl::SHOT352> SHOTFEATURE;
-
 
 	PCAligner();
 	~PCAligner();
 
-
     void setInputClouds (PCXYZ::Ptr c1, PCXYZ::Ptr c2);
 
-  protected:
+    /* parameters */
+    void setLeafSize(float size);
+    void setNormalEstSearchRadius(float radius);
+    void setSHOTSearchRadius(float radius);
 
-    /* processing functions */
+    /* data extraction */
+    Eigen::Matrix4f getFinalTransformation();
+
+
     void startAlignment ()
     {
 
@@ -65,16 +68,15 @@ class PCAligner
 		ICPRefinement();
     }
 
+  protected:
+
+    /* processing functions */
     void filterClouds ();
     void computeNormals ();
     void detectSHOTFeatures ();
     void matchSHOTDescriptors();
     int SampleConsensus();
     int ICPRefinement();
-
-    /* data extraction */
-    Eigen::Matrix4f getFinalTransformation();
-
 
   private:
 
@@ -87,18 +89,18 @@ class PCAligner
 	PCXYZ::Ptr filtered_cloud2_;
 
 	// normals of the filtered clouds
-	normal::Ptr normals1_;
-	normal::Ptr normals2_;
+	NORMAL::Ptr normals1_;
+	NORMAL::Ptr normals2_;
 
 	// SHOT features of the filtered point clouds
 	SHOTFEATURE::Ptr shot_descriptors1_;
 	SHOTFEATURE::Ptr shot_descriptors2_;
 
-	// aligned clouds
+	// aligned clouds (starting from cloud1)
 	PCXYZ::Ptr ransac_aligned_cloud1_;
 	PCXYZ::Ptr icp_aligned_cloud1_;
 
-	// calculated transformations
+	// calculated transformations (RANSAC->ICP)
 	Eigen::Matrix4f ransac_transformation_;
 	Eigen::Matrix4f icp_transformation_;
 
@@ -138,6 +140,18 @@ void PCAligner::setInputClouds (PCXYZ::Ptr c1, PCXYZ::Ptr c2)
 	startAlignment ();
 }
 
+void PCAligner::setLeafSize(float size){
+	leaf_size_ = size;
+}
+void PCAligner::setNormalEstSearchRadius(float radius){
+	normal_est_search_radius_ = radius;
+}
+
+void PCAligner::setSHOTSearchRadius(float radius){
+	shot_search_radius_ = radius;
+}
+
+
 /* ========================================== *\
  * 		1. DOWNSAMPLING
 \* ========================================== */
@@ -145,6 +159,16 @@ void PCAligner::setInputClouds (PCXYZ::Ptr c1, PCXYZ::Ptr c2)
 void PCAligner::filterClouds ()
 {
 
+	 // Preprocess the cloud by...
+	  // ...removing distant points
+	/*
+	  const float depth_limit = 1.0;
+	  pcl::PassThrough<pcl::PointXYZ> pass;
+	  pass.setInputCloud (cloud);
+	  pass.setFilterFieldName ("z");
+	  pass.setFilterLimits (0, depth_limit);
+	  pass.filter (*cloud);
+	  */
 
 	filtered_cloud1_ = PCXYZ::Ptr (new PCXYZ);
 	filtered_cloud2_ = PCXYZ::Ptr (new PCXYZ);
@@ -171,8 +195,8 @@ void PCAligner::filterClouds ()
 
 void PCAligner::computeNormals(){
 
-	normals1_ = normal::Ptr (new normal);
-	normals2_ = normal::Ptr (new normal);
+	normals1_ = NORMAL::Ptr (new NORMAL);
+	normals2_ = NORMAL::Ptr (new NORMAL);
 
 	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> norm_est;
 
@@ -224,10 +248,34 @@ void PCAligner::detectSHOTFeatures ()
 	shot_est.setInputNormals(normals2_);
 	shot_est.compute(*shot_descriptors2_);
 
-	std::cout << "--- feature search complete" << std::endl;
+	std::cout << "--- SHOT feature search complete" << std::endl;
+
+	// apply transformation on original cloud
+	ransac_aligned_cloud1_ = PCXYZ::Ptr (new PCXYZ);
+	pcl::transformPointCloud (*cloud1_, *ransac_aligned_cloud1_, ransac_transformation_);
+
+
+	// visualize sub result
+	pcl::visualization::PCLVisualizer viewer_ ("Features");
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> source_cloud_color_handler (cloud1_, 0, 0, 255);
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> transformed_cloud_color_handler (cloud2_, 230, 20, 20);
+
+	viewer_.addPointCloud (filtered_cloud1_, source_cloud_color_handler, "original cloud");
+	viewer_.addPointCloud (filtered_cloud2_, transformed_cloud_color_handler, "RANSAC aligned cloud");
+
+	// add features
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_temp_shot (new pcl::PointCloud<pcl::PointXYZ>);
+	copyPointCloud(*shot_descriptors2_, *cloud_temp_shot);
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> shot_keypoints_color_handler (cloud_temp_shot, 0, 255, 0);
+	viewer_.addPointCloud (cloud_temp_shot, shot_keypoints_color_handler, "shot features");
+	viewer_.setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 10, "shot features");
+
+
+	while (!viewer_.wasStopped ()) { // Display the visualiser until 'q' key is pressed
+		viewer_.spinOnce ();
+	}
 
 }
-
 
 /* ========================================== *\
  * 		4. DESCRIPTOR MATCHING
@@ -265,7 +313,6 @@ void PCAligner::matchSHOTDescriptors (){
 
 	std::cout << "--- descriptor matching complete. found " << correspondences->size() << " correspondences." << std::endl;
 }
-
 
 /* ========================================== *\
  * 		5. SAMPLE CONSENSUS
@@ -331,6 +378,7 @@ int PCAligner::SampleConsensus(){
 	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> transformed_cloud_color_handler (cloud2_, 230, 20, 20);
 	viewer_.addPointCloud (ransac_aligned_cloud1_, transformed_cloud_color_handler, "RANSAC aligned cloud");
 
+
 	while (!viewer_.wasStopped ()) { // Display the visualiser until 'q' key is pressed
 		viewer_.spinOnce ();
 	}
@@ -339,13 +387,11 @@ int PCAligner::SampleConsensus(){
 
 }
 
-
 /* ========================================== *\
  * 		7. ICP REFINEMENT
 \* ========================================== */
 
 int PCAligner::ICPRefinement(){
-
 
 	// use iterative closet point
 	pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
@@ -356,12 +402,6 @@ int PCAligner::ICPRefinement(){
 	icp.setInputSource(ransac_aligned_cloud1_);
 	icp.setInputTarget(cloud2_);
 
-
-	/* only consider points up to 3.5m */
-	/*
-	icp.setFilterFieldName("z");
-	icp.setFilterLimits(3.5);
-	*/
 
 	// align clouds
 	pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud2 (new pcl::PointCloud<pcl::PointXYZ> ());
@@ -393,7 +433,6 @@ int PCAligner::ICPRefinement(){
 	icp_aligned_cloud1_ = PCXYZ::Ptr (new PCXYZ);
 	pcl::transformPointCloud (*ransac_aligned_cloud1_, *icp_aligned_cloud1_, icp_transformation_);
 
-
 	// visualize
 	pcl::visualization::PCLVisualizer viewer2_ ("END RESULT");
 
@@ -413,6 +452,9 @@ int PCAligner::ICPRefinement(){
 
 }
 
+/* ========================================== *\
+ * 		DATA EXTRACTION
+\* ========================================== */
 
 Eigen::Matrix4f PCAligner::getFinalTransformation(){
 
@@ -431,9 +473,9 @@ int main (int argc, char **argv)
 	  pcl::io::loadPCDFile (ros::package::getPath("dyn_3d_mod") + "/recordings/cloud1.pcd", *cloud1);
 	  pcl::io::loadPCDFile (ros::package::getPath("dyn_3d_mod") + "/recordings/cloud2.pcd", *cloud2);
 
-	  PCAligner target_cloud;
+	  PCAligner aligner;
 	  //target_cloud.setInputCloud (cloud1);
-	  target_cloud.setInputClouds (cloud1, cloud2);
+	  aligner.setInputClouds (cloud1, cloud2);
 
 
   return (0);
