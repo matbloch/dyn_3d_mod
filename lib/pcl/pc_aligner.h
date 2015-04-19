@@ -43,6 +43,8 @@ class PCAligner
     void setLeafSize(float size);
     void setNormalEstSearchRadius(float radius);
     void setSHOTSearchRadius(float radius);
+    void setICPMaximumIterations(int nr_iter);
+    void setICPMaximumCorrelationDist(float dist);
 
     /* data extraction */
     Eigen::Matrix4f getFinalTransformation();
@@ -79,9 +81,10 @@ class PCAligner
 	PCXYZ::Ptr cloud1_;
 	PCXYZ::Ptr cloud2_;
 
-	// downsampled clouds
-	PCXYZ::Ptr filtered_cloud1_;
+	// downsampled clouds for RANSAC approximation
+	PCXYZ::Ptr filtered_estimation_cloud1_;
 	PCXYZ::Ptr filtered_cloud2_;
+
 
 	// normals of the filtered clouds
 	NORMAL::Ptr normals1_;
@@ -103,6 +106,8 @@ class PCAligner
 	float leaf_size_;	// downsampling size
 	float normal_est_search_radius_;
 	float shot_search_radius_;
+	int icp_max_iter_;
+	float icp_max_corr_dist_;
 
 };
 
@@ -114,7 +119,10 @@ class PCAligner
 PCAligner::PCAligner () :
       leaf_size_ (0.2),
       normal_est_search_radius_ (1),
-      shot_search_radius_ (0.8)
+      shot_search_radius_ (0.8),
+      icp_max_iter_(100),
+      icp_max_corr_dist_(0.2)
+
     {
 
 }
@@ -132,7 +140,6 @@ void PCAligner::setInputClouds (PCXYZ::Ptr c1, PCXYZ::Ptr c2)
 	pcl::removeNaNFromPointCloud(*cloud1_,*cloud1_, indices);
 	pcl::removeNaNFromPointCloud(*cloud2_,*cloud2_, indices);
 
-	startAlignment ();
 }
 
 void PCAligner::setLeafSize(float size){
@@ -141,9 +148,14 @@ void PCAligner::setLeafSize(float size){
 void PCAligner::setNormalEstSearchRadius(float radius){
 	normal_est_search_radius_ = radius;
 }
-
 void PCAligner::setSHOTSearchRadius(float radius){
 	shot_search_radius_ = radius;
+}
+void PCAligner::setICPMaximumIterations(int nr_iter){
+	icp_max_iter_ = nr_iter;
+}
+void PCAligner::setICPMaximumCorrelationDist(float dist){
+	icp_max_corr_dist_ = dist;
 }
 
 
@@ -165,7 +177,7 @@ void PCAligner::filterClouds ()
 	  pass.filter (*cloud);
 	  */
 
-	filtered_cloud1_ = PCXYZ::Ptr (new PCXYZ);
+	filtered_estimation_cloud1_ = PCXYZ::Ptr (new PCXYZ);
 	filtered_cloud2_ = PCXYZ::Ptr (new PCXYZ);
 
 	pcl::VoxelGrid<pcl::PointXYZ> filter;
@@ -174,7 +186,7 @@ void PCAligner::filterClouds ()
 
 	// filter first cloud
 	filter.setInputCloud(cloud1_);
-	filter.filter(*filtered_cloud1_);
+	filter.filter(*filtered_estimation_cloud1_);
 
 	// filter second cloud
 	filter.setInputCloud(cloud2_);
@@ -200,7 +212,7 @@ void PCAligner::computeNormals(){
 	norm_est.setRadiusSearch (normal_est_search_radius_);
 
 	// cloud 1
-	norm_est.setInputCloud (filtered_cloud1_);
+	norm_est.setInputCloud (filtered_estimation_cloud1_);
 	norm_est.compute (*normals1_);
 
 	// cloud 2
@@ -209,9 +221,9 @@ void PCAligner::computeNormals(){
 
 	// Visualize them.
 	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("Normals"));
-	viewer->addPointCloud<pcl::PointXYZ>(filtered_cloud1_, "cloud");
+	viewer->addPointCloud<pcl::PointXYZ>(filtered_estimation_cloud1_, "cloud");
 	// Display one normal out of 20, as a line of length 3cm.
-	viewer->addPointCloudNormals<pcl::PointXYZ, pcl::Normal>(filtered_cloud1_, normals1_, 4, 0.2, "normals");
+	viewer->addPointCloudNormals<pcl::PointXYZ, pcl::Normal>(filtered_estimation_cloud1_, normals1_, 4, 0.2, "normals");
 	while (!viewer->wasStopped())
 	{
 	viewer->spinOnce(100);
@@ -234,7 +246,7 @@ void PCAligner::detectSHOTFeatures ()
 	shot_descriptors2_ = SHOTFEATURE::Ptr (new SHOTFEATURE);
 
 	// cloud 1
-	shot_est.setInputCloud(filtered_cloud1_);
+	shot_est.setInputCloud(filtered_estimation_cloud1_);
 	shot_est.setInputNormals(normals1_);
 	shot_est.compute(*shot_descriptors1_);
 
@@ -255,7 +267,7 @@ void PCAligner::detectSHOTFeatures ()
 	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> source_cloud_color_handler (cloud1_, 0, 0, 255);
 	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> transformed_cloud_color_handler (cloud2_, 230, 20, 20);
 
-	viewer_.addPointCloud (filtered_cloud1_, source_cloud_color_handler, "original cloud");
+	viewer_.addPointCloud (filtered_estimation_cloud1_, source_cloud_color_handler, "original cloud");
 	viewer_.addPointCloud (filtered_cloud2_, transformed_cloud_color_handler, "RANSAC aligned cloud");
 
 	// add features
@@ -319,7 +331,7 @@ int PCAligner::SampleConsensus(){
 
 	pcl::SampleConsensusPrerejective<pcl::PointXYZ, pcl::PointXYZ, pcl::SHOT352> ransac;
 
-	ransac.setInputSource(filtered_cloud1_);	// calculate transformation from alignment of filtered cloud 1 to filtered cloud 2
+	ransac.setInputSource(filtered_estimation_cloud1_);	// calculate transformation from alignment of filtered cloud 1 to filtered cloud 2
 	ransac.setSourceFeatures(shot_descriptors1_);
 	ransac.setInputTarget(filtered_cloud2_);
 	ransac.setTargetFeatures(shot_descriptors2_);
@@ -391,12 +403,13 @@ int PCAligner::ICPRefinement(){
 	// use iterative closet point
 	pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
 
-	// do alignment
-	icp.setMaximumIterations (100);
-	//icp.setMaxCorrespondenceDistance (0.1);
+	// specify parameters
+	icp.setMaximumIterations (icp_max_iter_);
+	icp.setMaxCorrespondenceDistance (icp_max_corr_dist_);
+	icp.setRANSACOutlierRejectionThreshold (0.6);
+
 	icp.setInputSource(ransac_aligned_cloud1_);
 	icp.setInputTarget(cloud2_);
-
 
 	// align clouds
 	pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud2 (new pcl::PointCloud<pcl::PointXYZ> ());

@@ -12,7 +12,9 @@
 // Eigen
 #include <Eigen/Dense>
 
-
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/ini_parser.hpp>
+#include <boost/foreach.hpp>
 
 
 using namespace std;
@@ -31,6 +33,8 @@ class ConfigHandler {
 
 	// getters
 	void printOptions();
+	void save();
+	bool populate_tree(boost::program_options::variables_map& vm, boost::property_tree::ptree& tree);
 
 	// parse and return option
 	template<typename TYPE> bool getOption(std::string opt_name, TYPE &var){
@@ -48,7 +52,6 @@ class ConfigHandler {
 		}
 
 
-
 		try{
 			// else parse and return
 			var = options[opt_name].as< TYPE >();
@@ -60,7 +63,6 @@ class ConfigHandler {
 		return true;
 
 	}
-
 
 	private:
 
@@ -76,7 +78,33 @@ ConfigHandler::ConfigHandler(){
 }
 
 
+bool ConfigHandler::populate_tree(boost::program_options::variables_map& vm, boost::property_tree::ptree& tree)
+{
+    boost::program_options::notify(vm);
+    boost::property_tree::ptree& root = tree.add("root", "");
+    boost::property_tree::ptree empty_root = root;
+    BOOST_FOREACH(boost::program_options::variables_map::value_type& i, vm) {
+        boost::any value = i.second.value();
+        try {
+            root.add(i.first, boost::any_cast<std::string>(value));
+        }
+        catch (const boost::bad_any_cast& e) {
+            root.add(i.first, boost::any_cast<int>(value));
+        }
+    }
+    return empty_root != root; // tree not empty
+}
 
+
+void ConfigHandler::save()
+{
+
+	boost::property_tree::ptree tree;
+
+	const bool filled = populate_tree(options, tree);
+	write_ini( "config2.ini", tree );
+
+}
 
 
 void ConfigHandler::loadConfigFile(){
@@ -93,9 +121,8 @@ void ConfigHandler::loadConfigFile(){
 	("some_cat.string_prop", po::value< std::string >(),"tests" )
 	("settings.type", po::value< int >(),"settings_type" );
 
-
 	// Load setting file.
-	std::ifstream settings_file( "config.ini" , std::ifstream::in );
+	std::ifstream settings_file( "config.ini");
 	po::store( po::parse_config_file( settings_file , desc ), options );
 	settings_file.close();
 	po::notify( options );
@@ -153,7 +180,6 @@ Eigen::MatrixXf ConfigHandler::parseMatrixf(const std::string& s) {
 }
 
 
-
 int main()
 {
 
@@ -164,13 +190,7 @@ int main()
 	Eigen::Matrix4f myMat;
 
 	//conf.getOption("settings.type", mystring);
-	//conf.getOption("some_cat.string_prop", mystring);
-	//conf.getOption("settings.type", mystring);
-
-	conf.getOption("camera_parameters.extrinsics", myMat);
-
-	//std::cout << myMat  << '\n';
-
+	conf.save();
 
 
   return 0;
