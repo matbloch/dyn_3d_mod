@@ -51,9 +51,9 @@ rosbuild_add_executable(main src/main.cpp)
 #rosbuild_add_executable(bag_player lib/bag_player.cpp)
 #rosbuild_add_executable(pcl src/pcl_test.cpp)
 #rosbuild_add_executable(pc_viewer src/pc_viewer.cpp)
-rosbuild_add_executable(icp src/icp.cpp)
+rosbuild_add_executable(extr src/extrinsics_calibration.cpp)
 
 #rosbuild_add_executable(recorder src/pc_recorder.cpp)
 
 
-target_link_libraries(icp ${PCL_LIBRARIES} libvtkCommon.so libvtkFiltering.so ) # for pcl::visualizer
+target_link_libraries(extr ${PCL_LIBRARIES} libvtkCommon.so libvtkFiltering.so ) # for pcl::visualizer
