@@ -18,6 +18,12 @@ int main (int argc, char **argv)
 	  //target_cloud.setInputCloud (cloud1);
 	  aligner.setInputClouds (cloud1, cloud2);
 
+		aligner.setLeafSize(0.05);
+		aligner.setNormalEstSearchRadius(0.2);
+		aligner.setICPMaximumCorrelationDist(0.1);
+		aligner.setSHOTSearchRadius(0.1);
+		aligner.startAlignment();
+
 
   return (0);
 }
