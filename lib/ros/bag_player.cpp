@@ -39,18 +39,30 @@ int main(int argc, char **argv) {
     image_transport::ImageTransport it_(nh);
 
     // topics to load from the rosbag
-    std::string bag_depth_img_msg = "/camera/depth/image";
-    std::string bag_pc_msg = "/camera/depth/points";
+    std::string bag_depth_img_msg_1 = "/camera1/depth/image";
+    std::string bag_depth_img_msg_2 = "/camera2/depth/image";
+    std::string bag_depth_points_msg_1 = "/camera1/depth/points";
+    std::string bag_depth_points_msg_2 = "/camera2/depth/points";
+
+
+    std::string bag_pc_msg_1 = "/camera1/depth/image";
+    std::string bag_pc_msg_2 = "/camera2/depth/image";
+    std::string bag_pc_msg_3 = "/camera1/depth/points";
+    std::string bag_pc_msg_4 = "/camera2/depth/points";
 
     std::vector<std::string> topics;
-    topics.push_back(bag_depth_img_msg);
-    topics.push_back(bag_pc_msg);
-
+    topics.push_back(bag_depth_img_msg_1);
+    topics.push_back(bag_depth_img_msg_2);
+    topics.push_back(bag_depth_points_msg_1);
+    topics.push_back(bag_depth_points_msg_2);
 
     // prepare image publisher
-    image_transport::Publisher depth_image_pub_ = it_.advertise(bag_depth_img_msg, 1);
+    image_transport::Publisher depth_image_pub1_ = it_.advertise(bag_depth_img_msg_1, 1);
+    image_transport::Publisher depth_image_pub2_ = it_.advertise(bag_depth_img_msg_2, 1);
+
     // prepare pc publisher: pc as original sensor message point cloud, not a pcl
-    ros::Publisher pc_pub_ = nh.advertise<sensor_msgs::PointCloud2> (bag_pc_msg, 1);
+    ros::Publisher pc_pub1_ = nh.advertise<sensor_msgs::PointCloud2> (bag_depth_points_msg_1, 1);
+    ros::Publisher pc_pub2_ = nh.advertise<sensor_msgs::PointCloud2> (bag_depth_points_msg_2, 1);
 
 
     // specify file path
@@ -76,20 +88,34 @@ int main(int argc, char **argv) {
 	foreach(rosbag::MessageInstance const m, view)
 	{
 		// publish depth image
-		if (m.getTopic() == bag_depth_img_msg)
+		if (m.getTopic() == bag_depth_img_msg_1)
 		{
 			sensor_msgs::Image::ConstPtr depth_img_ptr = m.instantiate<sensor_msgs::Image>();
 			if (depth_img_ptr != NULL){
-				depth_image_pub_.publish(*depth_img_ptr);
+				depth_image_pub1_.publish(*depth_img_ptr);
 			}
 		}
-
+		if (m.getTopic() == bag_depth_img_msg_2)
+		{
+			sensor_msgs::Image::ConstPtr depth_img_ptr = m.instantiate<sensor_msgs::Image>();
+			if (depth_img_ptr != NULL){
+				depth_image_pub2_.publish(*depth_img_ptr);
+			}
+		}
 		// publish point cloud
-		if (m.getTopic() == bag_pc_msg)
+		if (m.getTopic() == bag_depth_points_msg_1)
 		{
 			sensor_msgs::PointCloud2::ConstPtr pc_ptr = m.instantiate<sensor_msgs::PointCloud2>();
 			if (pc_ptr != NULL){
-				pc_pub_.publish(*pc_ptr);
+				pc_pub1_.publish(*pc_ptr);
+			}
+		}
+		// publish point cloud
+		if (m.getTopic() == bag_depth_points_msg_2)
+		{
+			sensor_msgs::PointCloud2::ConstPtr pc_ptr = m.instantiate<sensor_msgs::PointCloud2>();
+			if (pc_ptr != NULL){
+				pc_pub2_.publish(*pc_ptr);
 			}
 		}
 
