@@ -29,46 +29,23 @@ class ConfigHandler {
     void updateOptions();
 
     // parsing
-    Eigen::MatrixXf parseMatrixf(const std::string& s);
+    template<typename TYPE> bool parseMatrixf(const std::string& s, TYPE &matrix);
 
 	// getters
 	void printOptions();
 	void save();
-	bool populate_tree(boost::program_options::variables_map& vm, boost::property_tree::ptree& tree);
+
 
 	// parse and return option
-	template<typename TYPE> bool getOption(std::string opt_name, TYPE &var){
-
-
-		/*
-		 * TODO: handle custom parsing (matrices)
-		 */
-
-		// check if matrix
-		if ( boost::is_same<TYPE, Eigen::Matrix4f>::value){
-			//var = options[opt_name].as< int >();
-			std::cout << "BOOJAH, matrix!" << std::endl;
-			return true;
-		}
-
-
-		try{
-			// else parse and return
-			var = options[opt_name].as< TYPE >();
-		}catch(std::exception const&  ex)
-		{
-			std::cout << "Error parsing config file. Setting variable type \"" << typeid(var).name() << "\" does not match the defined property type." << std::endl;
-		}
-
-		return true;
-
-	}
+	template<typename TYPE> bool getOption(std::string opt_name, TYPE &var);
+	template<typename TYPE> bool getOptionMatrix(std::string opt_name, TYPE &matrix);
+	template<typename TYPE> void updateUption(std::string opt_name, TYPE value);
 
 	private:
 
 		void loadConfigFile();
 
-		boost::program_options::variables_map options;
+		boost::property_tree::ptree options;
 
 
 };
@@ -78,109 +55,86 @@ ConfigHandler::ConfigHandler(){
 }
 
 
-bool ConfigHandler::populate_tree(boost::program_options::variables_map& vm, boost::property_tree::ptree& tree)
-{
-    boost::program_options::notify(vm);
-    boost::property_tree::ptree& root = tree.add("root", "");
-    boost::property_tree::ptree empty_root = root;
-    BOOST_FOREACH(boost::program_options::variables_map::value_type& i, vm) {
-        boost::any value = i.second.value();
-        try {
-            root.add(i.first, boost::any_cast<std::string>(value));
-        }
-        catch (const boost::bad_any_cast& e) {
-            root.add(i.first, boost::any_cast<int>(value));
-        }
-    }
-    return empty_root != root; // tree not empty
+// parse and return option
+template<typename TYPE> bool ConfigHandler::getOption(std::string opt_name, TYPE &var){
+	var = options.get<TYPE>(opt_name);
 }
 
+template<typename TYPE> bool ConfigHandler::getOptionMatrix(std::string opt_name, TYPE &matrix){
+
+	// get option as string, check if special signs included
+	std::string stringvar = options.get<std::string>(opt_name);
+
+
+	int cols = 0, rows = 0;
+
+	// stored property does not represent a matrix
+	std::size_t found = stringvar.find(",");
+	if (found==std::string::npos){
+		std::cout << "The selected configuration property does not represent a matrix" << std::endl;
+		return false;
+	}
+
+	std::vector< std::string > buff;
+	std::string delimiters(";");
+	boost::split(buff, stringvar, boost::is_any_of(delimiters));
+
+	// split rows
+	rows = buff.size();
+
+	delimiters = ",;";
+	boost::split(buff, stringvar, boost::is_any_of(delimiters));
+
+	cols = (int)buff.size()/rows;
+
+    // populate matrix
+    for (int i = 0; i < rows; i++)
+        for (int j = 0; j < cols; j++)
+        	// convert to float and save in matrix
+        	matrix(i,j) = std::stod(buff[ cols*i+j ]);
+
+
+    return true;
+
+}
 
 void ConfigHandler::save()
 {
 
-	boost::property_tree::ptree tree;
+	write_ini( "config.ini", options );
 
-	const bool filled = populate_tree(options, tree);
-	write_ini( "config2.ini", tree );
+}
+
+template<typename TYPE> void ConfigHandler::updateUption(std::string opt_name, TYPE value){
+
+
+	options.put(opt_name, value);
+	save();
 
 }
 
 
 void ConfigHandler::loadConfigFile(){
 
-	namespace po = boost::program_options;
-
-	// Setup options
-	po::options_description desc("Options");
-
-	// store in variable map
-	desc.add_options()
-	("plugins.name", po::value< std::vector< std::string > >()->multitoken(),"plugin names" )
-	("camera_parameters.extrinsics", po::value< std::string >(),"Camera Extrinsics" )	// store matrix as string
-	("some_cat.string_prop", po::value< std::string >(),"tests" )
-	("settings.type", po::value< int >(),"settings_type" );
-
-	// Load setting file.
-	std::ifstream settings_file( "config.ini");
-	po::store( po::parse_config_file( settings_file , desc ), options );
-	settings_file.close();
-	po::notify( options );
+    read_ini("config.ini", options);
 
 }
 
 void ConfigHandler::printOptions(){
 
-	/*
+    for (auto& section : options)
+    {
+        std::cout << '[' << section.first << "]\n";
+        for (auto& key : section.second){
+            std::cout << key.first << "=" << key.second.get_value<std::string>() << "\n";
 
-	//---------------------------------------- Print settings.
-
-	typedef std::vector< std::string >::iterator iterator;
-	for ( multiple_values::iterator iterator = plugin_names.begin(),
-								  end = plugin_names.end();
-	iterator < end;
-	++iterator )
-	{
-	std::cout << "plugin.name: " << *iterator << std::endl;
-	}
-
-	*/
-
-}
-
-/* ========================================== *\
- * 		PARSING
-\* ========================================== */
-
-Eigen::MatrixXf ConfigHandler::parseMatrixf(const std::string& s) {
-
-	int cols = 0, rows = 0;
-
-	std::vector< std::string > buff;
-	std::string delimiters(";");
-	boost::split(buff, s, boost::is_any_of(delimiters));
-
-	// split rows
-	rows = buff.size();
-
-	delimiters = ",;";
-	boost::split(buff, s, boost::is_any_of(delimiters));
-
-	cols = (int)buff.size()/rows;
-
-    // populate matrix
-	Eigen::MatrixXf result(rows,cols);
-    for (int i = 0; i < rows; i++)
-        for (int j = 0; j < cols; j++)
-        	// convert to float and save in matrix
-            result(i,j) = std::stod(buff[ cols*i+j ]);
-
-    return result;
+        }
+    }
 
 }
 
 
-int main()
+int main(int argc, char** argv)
 {
 
 	ConfigHandler conf;
@@ -188,10 +142,18 @@ int main()
 	std::string mystring;
 	int myint;
 	Eigen::Matrix4f myMat;
+	conf.printOptions();
 
-	//conf.getOption("settings.type", mystring);
+	conf.getOptionMatrix("camera_parameters.extrinsics", myMat);
+
+
+	std::cout << myMat << std::endl;
+
+
+	//conf.updateUption("settings",1337);
+
+
 	conf.save();
-
 
   return 0;
 }
