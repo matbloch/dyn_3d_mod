@@ -9,7 +9,7 @@
 
 #include <iostream>
 
-#include "definitions.h"	// constants
+#include "../lib/definitions.h"	// constants
 
 // PCL specific includes
 #include <pcl_conversions/pcl_conversions.h>
