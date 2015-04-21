@@ -17,8 +17,16 @@
 #include <boost/foreach.hpp>
 
 
+#include <sstream>
+
 using namespace std;
 
+
+template <typename T> string toString(const T& t) {
+   ostringstream os;
+   os<<t;
+   return os.str();
+}
 
 
 class ConfigHandler {
@@ -40,7 +48,7 @@ class ConfigHandler {
 	template<typename TYPE> bool getOption(std::string opt_name, TYPE &var);
 	template<typename TYPE> bool getOptionMatrix(std::string opt_name, TYPE &matrix);
 	template<typename TYPE> void updateOption(std::string opt_name, TYPE value);
-	template<typename TYPE> void updateOptionMatrix(std::string opt_name, TYPE matrix);
+	template<typename MTYPE> void updateOptionMatrix(std::string opt_name, MTYPE matrix);
 
 	private:
 
@@ -117,31 +125,32 @@ template<typename TYPE> void ConfigHandler::updateOption(std::string opt_name, T
 	options.put(opt_name, value);
 	save();
 }
-template<typename TYPE> void ConfigHandler::updateOptionMatrix(std::string opt_name, TYPE matrix){
+template<typename MTYPE> void ConfigHandler::updateOptionMatrix(std::string opt_name, MTYPE matrix){
 
 	std::string matcat;
+
 	for(int i=0;i<matrix.rows();i++){
 		for(int j=0;j<matrix.cols();j++){
+
 			// add value
-			matcat.append(matrix(i,j),matcat);
-			// add separator
-			if(i==matrix.rows()-1){
-			// end of matrix
+			matcat.append(toString(matrix(i,j)));
 
-			// end of column
-		    }else if(j==matrix.cols()-1){
-		    	matcat.append(";");
+		    if(j==matrix.cols()-1){
+		    	if(i!=matrix.rows()-1){
+		    		matcat.append(";");
+		    	}
 			}else{
-
 				matcat.append(",");
 			}
+
 		}
 	}
 
+	std::cout << matcat << std::endl;
 
-	// conversion to string
 	options.put(opt_name, matcat);
 	save();
+
 }
 
 
