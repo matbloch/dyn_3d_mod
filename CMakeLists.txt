@@ -21,7 +21,9 @@ rosbuild_init()
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
 #set the default path for built libraries to the "lib" directory
-set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
+#set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib_out)
+
+
 
 
 #common commands for building c++ executables and libraries
@@ -45,15 +47,17 @@ find_package( PCL 1.2 REQUIRED segmentation filters visualization )
 find_package(Eigen REQUIRED)
 include_directories(${Eigen_INCLUDE_DIRS})
 
+### add header files
+include_directories(${PROJECT_SOURCE_DIR}/lib)	# use #include "myfile.h". With sub-folder of lib: #include "mylib/myfile.h"
+
 # add executables
 rosbuild_add_executable(main src/main.cpp)
-#rosbuild_link_boost(main program_options regex)
-#rosbuild_add_executable(bag_player lib/bag_player.cpp)
-#rosbuild_add_executable(pcl src/pcl_test.cpp)
-#rosbuild_add_executable(pc_viewer src/pc_viewer.cpp)
-rosbuild_add_executable(extr src/extrinsics_calibration.cpp)
+rosbuild_link_boost(main program_options regex)
 
-#rosbuild_add_executable(recorder src/pc_recorder.cpp)
+### EXTRINSICS CALIBRATION
+rosbuild_add_executable(ext src/extrinsics_calibration.cpp)
+target_link_libraries(ext ${PCL_LIBRARIES} libvtkCommon.so libvtkFiltering.so ) # for pcl::visualizer
 
+### TESTS
+rosbuild_add_executable(test_config test/test_config.cpp)
 
-target_link_libraries(extr ${PCL_LIBRARIES} libvtkCommon.so libvtkFiltering.so ) # for pcl::visualizer
