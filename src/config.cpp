@@ -39,7 +39,8 @@ class ConfigHandler {
 	// parse and return option
 	template<typename TYPE> bool getOption(std::string opt_name, TYPE &var);
 	template<typename TYPE> bool getOptionMatrix(std::string opt_name, TYPE &matrix);
-	template<typename TYPE> void updateUption(std::string opt_name, TYPE value);
+	template<typename TYPE> void updateOption(std::string opt_name, TYPE value);
+	template<typename TYPE> void updateOptionMatrix(std::string opt_name, TYPE matrix);
 
 	private:
 
@@ -87,6 +88,11 @@ template<typename TYPE> bool ConfigHandler::getOptionMatrix(std::string opt_name
 
 	cols = (int)buff.size()/rows;
 
+	if(matrix.rows() != rows || matrix.cols() != cols){
+		std::cout << "Loading matrix from config file failed. Matrices do not have the same dimensions" << std::endl;
+		return false;
+	}
+
     // populate matrix
     for (int i = 0; i < rows; i++)
         for (int j = 0; j < cols; j++)
@@ -101,16 +107,41 @@ template<typename TYPE> bool ConfigHandler::getOptionMatrix(std::string opt_name
 void ConfigHandler::save()
 {
 
-	write_ini( "config.ini", options );
+	write_ini( "config2.ini", options );
 
 }
 
-template<typename TYPE> void ConfigHandler::updateUption(std::string opt_name, TYPE value){
+template<typename TYPE> void ConfigHandler::updateOption(std::string opt_name, TYPE value){
 
-
+	// conversion to string
 	options.put(opt_name, value);
 	save();
+}
+template<typename TYPE> void ConfigHandler::updateOptionMatrix(std::string opt_name, TYPE matrix){
 
+	std::string matcat;
+	for(int i=0;i<matrix.rows();i++){
+		for(int j=0;j<matrix.cols();j++){
+			// add value
+			matcat.append(matrix(i,j),matcat);
+			// add separator
+			if(i==matrix.rows()-1){
+			// end of matrix
+
+			// end of column
+		    }else if(j==matrix.cols()-1){
+		    	matcat.append(";");
+			}else{
+
+				matcat.append(",");
+			}
+		}
+	}
+
+
+	// conversion to string
+	options.put(opt_name, matcat);
+	save();
 }
 
 
@@ -141,7 +172,7 @@ int main(int argc, char** argv)
 
 	std::string mystring;
 	int myint;
-	Eigen::Matrix4f myMat;
+	Eigen::Matrix3f myMat;
 	conf.printOptions();
 
 	conf.getOptionMatrix("camera_parameters.extrinsics", myMat);
@@ -150,9 +181,9 @@ int main(int argc, char** argv)
 	std::cout << myMat << std::endl;
 
 
-	//conf.updateUption("settings",1337);
+	conf.updateOption("ransac.param","asdf");
 
-
+	conf.updateOptionMatrix("rans3ac.param",myMat);
 	conf.save();
 
   return 0;
