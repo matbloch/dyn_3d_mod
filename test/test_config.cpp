@@ -6,22 +6,25 @@
  */
 
 #include <Eigen/Dense>
-#include "../lib/config/config_handler.h"
+#include "definitions.h"
+#include "config/config_handler.h"
+
+	ConfigHandler conf;
 
 int main(int argc, char** argv)
 {
 
-	ConfigHandler conf;
+	float approx_leaf_size;
+	float normal_est_search_radius;
+	float icp_max_correlation_dist;
+	float shot_search_radius;
 
-	std::string mystring;
-	int myint;
-	Eigen::Matrix3f myMat;
 	conf.printOptions();
 
-	conf.getOptionMatrix("camera_parameters.extrinsics", myMat);
-	std::cout << myMat << std::endl;
-
-	conf.updateOption("settings.type",4);
+	conf.getOption("extrinsics_calibration.approx_leaf_size",approx_leaf_size);
+	conf.getOption("extrinsics_calibration.normal_est_search_radius",normal_est_search_radius);
+	conf.getOption("extrinsics_calibration.icp_max_correlation_dist",icp_max_correlation_dist);
+	conf.getOption("extrinsics_calibration.shot_search_radius",shot_search_radius);
 
   return 0;
 }

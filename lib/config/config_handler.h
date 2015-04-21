@@ -30,11 +30,9 @@ template <typename T> string toString(const T& t) {
 
 class ConfigHandler {
 
-	std::string config_path;
-
   public:
 
-		ConfigHandler(std::string path);
+		ConfigHandler();
 
 		void printOptions();	// print the options
 
@@ -56,8 +54,7 @@ class ConfigHandler {
 
 };
 
-ConfigHandler::ConfigHandler(std::string path){
-	config_path = path;
+ConfigHandler::ConfigHandler(){
 	loadConfigFile();
 }
 
@@ -124,7 +121,7 @@ template<typename TYPE> bool ConfigHandler::getOptionMatrix(std::string opt_name
 void ConfigHandler::save()
 {
 
-	write_ini(config_path, options );
+	write_ini("config.ini", options );
 
 }
 
@@ -185,7 +182,7 @@ void ConfigHandler::loadConfigFile(){
 
     try
     {
-    	read_ini(config_path, options);
+    	read_ini("config.ini", options);
     }catch(boost::property_tree::ptree_error &e){
         cout << e.what() << endl;
     }

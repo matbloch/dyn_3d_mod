@@ -350,7 +350,7 @@ void CameraConnector::display_help( )
 {
 	std::cout<<"\n";
 	std::cout << "=================================" << std::endl;
-	std::cout << " USAGE:" << std::endl;
+	std::cout << " INSTRUCTION:" << std::endl;
 	std::cout << "---------------------------------" << std::endl;
 	std::cout << " [RETURN]: save point cloud" << std::endl;
 	std::cout << "=================================" << std::endl;

@@ -13,9 +13,9 @@
 #include <time.h>	// timing
 
 /* Include own libraries */
-#include "../lib/camera_connector.h"	// Kinect camera connector
-#include "../lib/definitions.h"
-#include "../lib/filters.h"	  // image filters
+#include "camera_connector.h"	// Kinect camera connector
+#include "definitions.h"
+#include "cv/filters.h"	  // image filters
 
 
 namespace

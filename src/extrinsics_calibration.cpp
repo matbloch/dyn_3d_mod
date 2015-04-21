@@ -20,25 +20,27 @@
 #include <message_filters/sync_policies/exact_time.h>		// exact time synchronization
 #include <message_filters/sync_policies/approximate_time.h>	// approximate time synchronization
 
-#include "../lib/pcl/pc_aligner.h"
-
-
-// globals
-bool display_features = true;
-bool display_matched_features = true;
+#include "definitions.h"
+#include "pcl/pc_aligner.h"
+#include "config/config_handler.h"
 
 using namespace sensor_msgs;
 using namespace message_filters;
 
-int i=1;
+// status
+bool in_calibration = false;
+bool calib_is_finished = false;
+bool camera_is_connected = false;
+
+// settings
+ConfigHandler conf;
 
 void calibration_callback(
 		const sensor_msgs::PointCloud2ConstPtr& c1, const sensor_msgs::PointCloud2ConstPtr& c2)
 {
 
-	if(i != 1){
-		return;
-	}
+	if(calib_is_finished){return;}
+	if(!camera_is_connected){camera_is_connected = true;}
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud1(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud2(new pcl::PointCloud<pcl::PointXYZ>);
@@ -47,35 +49,110 @@ void calibration_callback(
 	pcl::fromROSMsg(*c1, *cloud1);
 	pcl::fromROSMsg(*c2, *cloud2);
 
-	// do alignment
+	/* ========================================== *\
+	 * 		DO ALIGNMENT
+	\* ========================================== */
+
 	PCAligner aligner;
+
+	float approx_leaf_size;
+	float normal_est_search_radius;
+	float icp_max_correlation_dist;
+	float shot_search_radius;
+
+	conf.getOption("extrinsics_calibration.approx_leaf_size",approx_leaf_size);
+	conf.getOption("extrinsics_calibration.normal_est_search_radius",normal_est_search_radius);
+	conf.getOption("extrinsics_calibration.icp_max_correlation_dist",icp_max_correlation_dist);
+	conf.getOption("extrinsics_calibration.shot_search_radius",shot_search_radius);
+
 	aligner.setInputClouds(cloud1, cloud2);
-	aligner.setLeafSize(0.02);
-	aligner.setNormalEstSearchRadius(0.2);
-	aligner.setICPMaximumCorrelationDist(0.1);
-	aligner.setSHOTSearchRadius(0.1);
+	aligner.setLeafSize(approx_leaf_size);
+	aligner.setNormalEstSearchRadius(normal_est_search_radius);
+	aligner.setICPMaximumCorrelationDist(icp_max_correlation_dist);
+	aligner.setSHOTSearchRadius(shot_search_radius);
 	aligner.startAlignment();
 
-	i++;
+	/* ========================================== *\
+	 * 		SAVE, QUIT OR CONTINUE
+	\* ========================================== */
+
+	std::cout<<"\n";
+	std::cout << "=================================" << std::endl;
+	std::cout << " HOW WOULD YOU LIKE TO PROCEDE?:" << std::endl;
+	std::cout << "---------------------------------" << std::endl;
+	std::cout << " [s]: save extrinsic" << std::endl;
+	std::cout << " [q]: quit configuration" << std::endl;
+	std::cout << " [any]: restart configuration" << std::endl;
+	std::cout << "=================================" << std::endl;
+	std::cout<<"\n";
+
+    string finish_alignment;
+
+    std::cout<<"Select your option: ";
+    getline (cin,finish_alignment);
+
+    if (finish_alignment == "s"){
+
+		Eigen::Matrix4f transf;
+
+		transf = aligner.getFinalTransformation();
+
+		// store extrinsics
+		if(conf.updateOptionMatrix("camera_parameters.extrinsics", transf)){
+			calib_is_finished = true;
+		}else{
+			std::cout << "An error occurred during saving the extrinsic. Please make sure to include the following path in your configuration file: camera_parameters.extrinsics" << std::endl;
+		}
+
+    }else if(finish_alignment == "q"){
+    	calib_is_finished = true;
+    }
+
 }
 
+void print_instructions(){
 
+	std::cout<<"\n";
+	std::cout << "=================================" << std::endl;
+	std::cout << " INSTRUCTION:" << std::endl;
+	std::cout << "---------------------------------" << std::endl;
+	std::cout << " [any]: start calibration" << std::endl;
+	std::cout << "=================================" << std::endl;
+	std::cout<<"\n";
+
+}
 
 int main(int argc, char** argv)
 {
 	/*
-	 * INPUT: camera streams (sensor image msg)
-	 * OUTPUT: synced, aligned voxel structure (CV::Mat)
+	 * @param optional, camera name 1
+	 * @param optional, camera name 2
 	 *
 	 */
 
 	ros::init(argc, argv, "dyn_3d_photo");
 	ros::NodeHandle nh_;
+	ros::Rate r(60); // 60 Hz
 	image_transport::ImageTransport it_(nh_);
 
+	std::string camera1;
+	std::string camera2;
+
+	// resolve topics
+	if(argc > 2){
+		camera1 = nh_.resolveName(argv[2]);
+		camera2 = nh_.resolveName(argv[3]);
+	}else{
+		camera1 = nh_.resolveName("camera1");
+		camera2 = nh_.resolveName("camera2");
+	}
+
+    std::string point_topic_1 = ros::names::clean(camera1 + "/depth/" + nh_.resolveName("points"));
+    std::string point_topic_2 = ros::names::clean(camera2 + "/depth/" + nh_.resolveName("points"));
+
 	// define subscribers
-	message_filters::Subscriber<sensor_msgs::PointCloud2> depth_sub_1(nh_, "/camera1/depth/points", 1);
-	message_filters::Subscriber<sensor_msgs::PointCloud2> depth_sub_2(nh_, "/camera2/depth/points", 1);
+	message_filters::Subscriber<sensor_msgs::PointCloud2> depth_sub_1(nh_, point_topic_1, 1);
+	message_filters::Subscriber<sensor_msgs::PointCloud2> depth_sub_2(nh_, point_topic_2, 1);
 
 	typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2,
 															sensor_msgs::PointCloud2>
@@ -91,11 +168,30 @@ int main(int argc, char** argv)
 			  ,_2
 			  ));
 
-
 	ROS_INFO("Configuration node initialized");
 
+	print_instructions();
 
-	  ros::spin();
+	std::string start_alignment;
 
-	  return 0;
+    getline (cin,start_alignment);
+
+	unsigned int timeout = 6;  // connection timeout in seconds
+	time_t init_time = time(0);
+
+	while (!calib_is_finished)	// spin until calibration has ended
+	{
+
+		if(!camera_is_connected && time(0) > timeout + init_time){
+
+			std::cout <<  "--- Connection timed out" << std::endl;
+			break; // Connection timed out - terminate the node
+
+		}
+
+		ros::spinOnce();
+		r.sleep();
+	}
+
+	return 0;
 }
