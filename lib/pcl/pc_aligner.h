@@ -40,6 +40,7 @@ class PCAligner
     void setInputClouds (PCXYZ::Ptr c1, PCXYZ::Ptr c2);
 
     /* parameters */
+    void setCutoffDistance(float dist);
     void setLeafSize(float size);
     void setNormalEstSearchRadius(float radius);
     void setSHOTSearchRadius(float radius);
@@ -53,8 +54,16 @@ class PCAligner
     void startAlignment ()
     {
 
+    	// validate parameters
+    	if(!validateParameters()){
+    		return;
+    	}
+
+    	// preprocessing
 		filterClouds();
-		computeNormals ();
+
+		// prealignment
+		computeNormals();
 		detectSHOTFeatures();
 		matchSHOTDescriptors();
 
@@ -62,10 +71,14 @@ class PCAligner
 			return;
 		}
 
+		// refinement
 		ICPRefinement();
     }
 
   protected:
+
+    /* validation */
+    bool validateParameters();
 
     /* processing functions */
     void filterClouds ();
@@ -83,7 +96,7 @@ class PCAligner
 
 	// downsampled clouds for RANSAC approximation
 	PCXYZ::Ptr filtered_estimation_cloud1_;
-	PCXYZ::Ptr filtered_cloud2_;
+	PCXYZ::Ptr filtered_estimation_cloud2_;
 
 
 	// normals of the filtered clouds
@@ -103,6 +116,7 @@ class PCAligner
 	Eigen::Matrix4f icp_transformation_;
 
     // Parameters
+	float cut_off_distance_;
 	float leaf_size_;	// downsampling size
 	float normal_est_search_radius_;
 	float shot_search_radius_;
@@ -117,6 +131,7 @@ class PCAligner
 
 
 PCAligner::PCAligner () :
+	  cut_off_distance_ (100),
       leaf_size_ (0.2),
       normal_est_search_radius_ (1),
       shot_search_radius_ (0.8),
@@ -142,6 +157,9 @@ void PCAligner::setInputClouds (PCXYZ::Ptr c1, PCXYZ::Ptr c2)
 
 }
 
+void PCAligner::setCutoffDistance(float dist){
+	cutoff_distance_ = dist;
+}
 void PCAligner::setLeafSize(float size){
 	leaf_size_ = size;
 }
@@ -158,6 +176,18 @@ void PCAligner::setICPMaximumCorrelationDist(float dist){
 	icp_max_corr_dist_ = dist;
 }
 
+bool PCAligner::validateParameters(){
+
+	// check if downsampling leafsize for approximation is feasible
+	if(leaf_size_*1.1 >= normal_est_search_radius_){
+		std::cout << "Normal search radius is too small: The normal search radius needs to be at least the size of the downsampling leaf size" << std::endl;
+		return false;
+	}
+
+	return true;
+
+}
+
 
 /* ========================================== *\
  * 		1. DOWNSAMPLING
@@ -166,20 +196,22 @@ void PCAligner::setICPMaximumCorrelationDist(float dist){
 void PCAligner::filterClouds ()
 {
 
-	 // Preprocess the cloud by...
-	  // ...removing distant points
-	/*
-	  const float depth_limit = 1.0;
-	  pcl::PassThrough<pcl::PointXYZ> pass;
-	  pass.setInputCloud (cloud);
-	  pass.setFilterFieldName ("z");
-	  pass.setFilterLimits (0, depth_limit);
-	  pass.filter (*cloud);
-	  */
-
 	filtered_estimation_cloud1_ = PCXYZ::Ptr (new PCXYZ);
-	filtered_cloud2_ = PCXYZ::Ptr (new PCXYZ);
+	filtered_estimation_cloud2_ = PCXYZ::Ptr (new PCXYZ);
 
+	// 1: CUTOFF FILTERING - removing measurements with big variance
+	pcl::PassThrough<pcl::PointXYZ> pass;
+	pass.setFilterFieldName ("z");
+	pass.setFilterLimits (0, cut_off_distance_);
+
+	pass.setInputCloud (cloud1_);
+	pass.filter (*filtered_estimation_cloud1_);
+
+	pass.setInputCloud (cloud2_);
+	pass.filter (*filtered_estimation_cloud2_);
+
+
+	// 2: DOWNSAMPLING
 	pcl::VoxelGrid<pcl::PointXYZ> filter;
 	filter.setLeafSize(leaf_size_,leaf_size_,leaf_size_);
 
@@ -190,7 +222,7 @@ void PCAligner::filterClouds ()
 
 	// filter second cloud
 	filter.setInputCloud(cloud2_);
-	filter.filter(*filtered_cloud2_);
+	filter.filter(*filtered_estimation_cloud2_);
 
 	std::cout << "--- downsampling complete" << std::endl;
 
@@ -216,7 +248,7 @@ void PCAligner::computeNormals(){
 	norm_est.compute (*normals1_);
 
 	// cloud 2
-	norm_est.setInputCloud (filtered_cloud2_);
+	norm_est.setInputCloud (filtered_estimation_cloud2_);
 	norm_est.compute (*normals2_);
 
 	// Visualize them.
@@ -251,7 +283,7 @@ void PCAligner::detectSHOTFeatures ()
 	shot_est.compute(*shot_descriptors1_);
 
 	// cloud 2
-	shot_est.setInputCloud(filtered_cloud2_);
+	shot_est.setInputCloud(filtered_estimation_cloud2_);
 	shot_est.setInputNormals(normals2_);
 	shot_est.compute(*shot_descriptors2_);
 
@@ -268,7 +300,7 @@ void PCAligner::detectSHOTFeatures ()
 	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> transformed_cloud_color_handler (cloud2_, 230, 20, 20);
 
 	viewer_.addPointCloud (filtered_estimation_cloud1_, source_cloud_color_handler, "original cloud");
-	viewer_.addPointCloud (filtered_cloud2_, transformed_cloud_color_handler, "RANSAC aligned cloud");
+	viewer_.addPointCloud (filtered_estimation_cloud2_, transformed_cloud_color_handler, "RANSAC aligned cloud");
 
 	// add features
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_temp_shot (new pcl::PointCloud<pcl::PointXYZ>);
@@ -333,7 +365,7 @@ int PCAligner::SampleConsensus(){
 
 	ransac.setInputSource(filtered_estimation_cloud1_);	// calculate transformation from alignment of filtered cloud 1 to filtered cloud 2
 	ransac.setSourceFeatures(shot_descriptors1_);
-	ransac.setInputTarget(filtered_cloud2_);
+	ransac.setInputTarget(filtered_estimation_cloud2_);
 	ransac.setTargetFeatures(shot_descriptors2_);
 
 	// Instead of matching a descriptor with its nearest neighbor, choose randomly between
