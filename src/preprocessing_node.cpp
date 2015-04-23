@@ -4,7 +4,21 @@
 #include <sensor_msgs/image_encodings.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+// Eigen
+#include <Eigen/Dense>
 
+// our own libraries
+#include <config/config_handler.h>
+#include <cv/filters.h>
+
+// status
+bool in_calibration = false;
+bool calib_is_finished = false;
+bool camera_is_connected = false;
+
+// settings
+ConfigHandler conf;
+ImageFilters filters;
 
 // globals
 ros::Publisher pub_;
@@ -50,11 +64,28 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
      *
      */
 
+    cv::Mat filtered1;
+    cv::Mat filtered2;
+
+    // prefiltering
+    filters.gaussian(cv_ptr1, filtered1);
+    filters.gaussian(cv_ptr1, filtered2);
+
+
+    // display filter result
+	cv::imshow("first image", filtered1);
+	cv::waitKey(3);
+	cv::imshow("second image", filtered2);
+	cv::waitKey(3);
+
 
     /* ========================================== *\
      * 		2. Voxel grid
     \* ========================================== */
 
+    // get extrinsics
+    Eigen::Matrix4f extrinsics;
+	conf.getOptionMatrix("camera_parameters.extrinsics", extrinsics);
 
 
     /* ========================================== *\

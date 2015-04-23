@@ -43,6 +43,7 @@ class PCAligner
     void setCutoffDistance(float dist);
     void setLeafSize(float size);
     void setNormalEstSearchRadius(float radius);
+    void setRANSACMaxCorrespondenceDist(float dist);
     void setSHOTSearchRadius(float radius);
     void setICPMaximumIterations(int nr_iter);
     void setICPMaximumCorrelationDist(float dist);
@@ -120,6 +121,7 @@ class PCAligner
 	float leaf_size_;	// downsampling size
 	float normal_est_search_radius_;
 	float shot_search_radius_;
+	float ransac_max_corr_dist_
 	int icp_max_iter_;
 	float icp_max_corr_dist_;
 
@@ -135,6 +137,7 @@ PCAligner::PCAligner () :
       leaf_size_ (0.2),
       normal_est_search_radius_ (1),
       shot_search_radius_ (0.8),
+      ransac_max_corr_dist_ (0.2),
       icp_max_iter_(100),
       icp_max_corr_dist_(0.2)
 
@@ -158,13 +161,16 @@ void PCAligner::setInputClouds (PCXYZ::Ptr c1, PCXYZ::Ptr c2)
 }
 
 void PCAligner::setCutoffDistance(float dist){
-	cutoff_distance_ = dist;
+	cut_off_distance_ = dist;
 }
 void PCAligner::setLeafSize(float size){
 	leaf_size_ = size;
 }
 void PCAligner::setNormalEstSearchRadius(float radius){
 	normal_est_search_radius_ = radius;
+}
+void PCAligner::setRANSACMaxCorrespondenceDist(float dist){
+	ransac_max_corr_dist_ = dist;
 }
 void PCAligner::setSHOTSearchRadius(float radius){
 	shot_search_radius_ = radius;
