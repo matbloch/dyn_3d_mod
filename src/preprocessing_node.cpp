@@ -10,6 +10,8 @@
 // our own libraries
 #include <config/config_handler.h>
 #include <cv/filters.h>
+#include "cv/voxel_grid.h"
+
 
 // status
 bool in_calibration = false;
@@ -19,9 +21,13 @@ bool camera_is_connected = false;
 // settings
 ConfigHandler conf;
 ImageFilters filters;
+voxelGrid grid;
 
 // globals
 ros::Publisher pub_;
+
+void getCameraParameters(cv::Mat intrinsicMat);
+void getCameraPose(cv::Mat R, cv::Mat tVec);
 
 void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor_msgs::ImageConstPtr& msg2)
 {
@@ -84,6 +90,29 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
     Eigen::Matrix4f extrinsics;
 	conf.getOptionMatrix("camera_parameters.extrinsics", extrinsics);
 
+	// Define intrinsic camera parameters
+	cv::Mat intrinsicMat(3, 3, CV_32F); // intrinsic matrix
+	getCameraParameters(intrinsicMat);
+
+	// Needs to be edited
+	// Define Camera orientation and position w.r.t. grid
+	cv::Mat R(3, 3, CV_32F);
+	cv::Mat tVec(3, 1, CV_32F); // Translation vector in camera frame
+	getCameraPose(R,tVec);
+
+	// Set Voxel parameters
+	int gridsize = 128;   // Must be 2^x
+	float spacing_in_m = 0.05;
+
+	// Setup voxel structure to load the TSDF in
+	int sz[3] = {gridsize,gridsize,gridsize};
+	Mat FilledVoxels(3,sz, CV_32FC1, Scalar::all(0));
+
+	// Setup the grid
+	grid.setParameters(gridsize, spacing_in_m, intrinsicMat, R, tVec);
+	// Fill in voxels
+	grid.fillVoxels(cv_ptr1>image, FilledVoxels);
+
 
     /* ========================================== *\
      * 		3. Fusion
@@ -139,4 +168,34 @@ int main(int argc, char** argv)
 	}
 
 	return 0;
+}
+
+void getCameraParameters(cv::Mat intrinsicMat)
+{
+	intrinsicMat.at<float>(0, 0) = 589.3667;  // 640/2/tand(57/2)
+	intrinsicMat.at<float>(1, 0) = 0;
+	intrinsicMat.at<float>(2, 0) = 0;
+
+	intrinsicMat.at<float>(0, 1) = 0;
+	intrinsicMat.at<float>(1, 1) = 609.2755;  // 480/2/tand(43/2)
+	intrinsicMat.at<float>(2, 1) = 0;
+
+	intrinsicMat.at<float>(0, 2) = 319.5;  // 640/2
+	intrinsicMat.at<float>(1, 2) = 239.5;  // 240/2
+	intrinsicMat.at<float>(2, 2) = 1;
+}
+
+void getCameraPose(cv::Mat R, cv::Mat tVec)
+{
+	cv::Mat rVec(3, 1, cv::DataType<float>::type); // Rotation vector
+	// Rotation vector in Rodrigues angles
+	rVec.at<float>(0) = 0;
+	rVec.at<float>(1) = 0;
+	rVec.at<float>(2) = 0;
+	Rodrigues(rVec, R);
+
+	// Translation vector in Camera frame
+	tVec.at<float>(0) = 0;
+	tVec.at<float>(1) = 0;
+	tVec.at<float>(2) = -5;
 }
