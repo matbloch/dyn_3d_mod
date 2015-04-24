@@ -1,15 +1,9 @@
-/*
- * script.cpp
- *
- *  Created on: 16 mrt. 2015
- *      Author: RGrandia
- */
-
 #include <Eigen/Dense>
 #include "definitions.h"
 #include "config/config_handler.h"
 
-	ConfigHandler conf;
+
+ConfigHandler conf;
 
 int main(int argc, char** argv)
 {

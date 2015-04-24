@@ -61,7 +61,6 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
 
     /*
      * cv_ptr1->image ...
-     *
      */
 
     cv::Mat filtered1;
@@ -71,13 +70,11 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
     filters.gaussian(cv_ptr1, filtered1);
     filters.gaussian(cv_ptr1, filtered2);
 
-
     // display filter result
 	cv::imshow("first image", filtered1);
 	cv::waitKey(3);
 	cv::imshow("second image", filtered2);
 	cv::waitKey(3);
-
 
     /* ========================================== *\
      * 		2. Voxel grid

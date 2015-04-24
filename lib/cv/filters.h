@@ -8,10 +8,10 @@ class ImageFilters
 
 
 		/* Bilateral filtering */
-		static void bilateral(cv::Mat in, cv::Mat &out);
+		static void bilateral(cv::Mat in, cv::Mat out, int window_size);
 
 		/* Gaussian filtering */
-		static void gaussian(cv::Mat in, cv::Mat &out);
+		static void gaussian(cv::Mat in, cv::Mat out, int filter_size, int filter_order);
 
 		ImageFilters(void);
 
@@ -26,14 +26,18 @@ ImageFilters::ImageFilters( void )
 
 }
 
-void ImageFilters::bilateral(cv::Mat in, cv::Mat &out)
+void ImageFilters::bilateral(cv::Mat in, cv::Mat out, int window_size = 5)
 {
-	int i = 5;
-	cv::bilateralFilter ( in, out, i, i*2, i/2 );
+	cv::bilateralFilter ( in, out, window_size, window_size*2, window_size/2 );
 }
 
-void ImageFilters::gaussian(cv::Mat in, cv::Mat &out)
+void ImageFilters::gaussian(cv::Mat in, cv::Mat out, int filter_size = 11, int filter_order = 1)
 {
-	// apply gaussian blur with kernel size 11
-	cv::GaussianBlur( in, out, cv::Size( 11, 11 ), 0, 0 );
+	for(int i=1;i<=filter_order;i++){
+		if(i==1){
+			cv::GaussianBlur( in, out, cv::Size( filter_size, filter_size ), 0, 0 );
+		}else{
+			cv::GaussianBlur( in, out, cv::Size( filter_size, filter_size ), 0, 0 );
+		}
+	}
 }

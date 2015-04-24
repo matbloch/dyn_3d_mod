@@ -13,6 +13,7 @@
 // filtering/downsampling
 #include <pcl/point_types.h>
 #include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/passthrough.h>
 
 // correspondences
 #include <pcl/correspondence.h>
@@ -121,7 +122,7 @@ class PCAligner
 	float leaf_size_;	// downsampling size
 	float normal_est_search_radius_;
 	float shot_search_radius_;
-	float ransac_max_corr_dist_
+	float ransac_max_corr_dist_;
 	int icp_max_iter_;
 	float icp_max_corr_dist_;
 
