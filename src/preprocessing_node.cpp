@@ -40,6 +40,11 @@ voxelGrid grid;
 
 // globals
 ros::Publisher pub_;
+cv::Mat intrinsicMat(3, 3, CV_32F); // intrinsic matrix
+cv::Mat R(3, 3, CV_32F);    // Rotation vector
+cv::Mat tVec(3, 1, CV_32F); // Translation vector in camera frame
+int gridsize;   // Must be 2^x
+float spacing_in_m;
 
 
 void getCameraParameters(cv::Mat intrinsicMat);
@@ -84,9 +89,14 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
     cv::Mat filtered1;
     cv::Mat filtered2;
 
+    // No filtering
+    filtered1 = cv_ptr1->image;
+    filtered2 = cv_ptr2->image;
+
     // prefiltering
-    filters.bilateral(cv_ptr1->image, filtered1);
-    filters.bilateral(cv_ptr2->image, filtered2);
+//    filters.bilateral(cv_ptr1->image, filtered1);
+//    filters.bilateral(cv_ptr2->image, filtered2);
+
 
     /*
      * store depth data as .yml
@@ -97,8 +107,8 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
 
     */
 
-	cv::imshow("filtered", filtered1);
-	cv::waitKey(30000);
+//	cv::imshow("filtered", filtered1);
+//	cv::waitKey(1000);
 
     /* ========================================== *\
      * 		2. Voxel grid
@@ -109,35 +119,34 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
     Eigen::Matrix4f extrinsics;
 	conf.getOptionMatrix("camera_parameters.extrinsics", extrinsics);
 
-	// Define intrinsic camera parameters
-	cv::Mat intrinsicMat(3, 3, CV_32F); // intrinsic matrix
-	getCameraParameters(intrinsicMat);
+//	// Define intrinsic camera parameters
+//	cv::Mat intrinsicMat(3, 3, CV_32F); // intrinsic matrix
+//	getCameraParameters(intrinsicMat);
+//
+//	// Needs to be edited
+//	// Define Camera orientation and position w.r.t. grid
+//	cv::Mat R(3, 3, CV_32F);
+//	cv::Mat tVec(3, 1, CV_32F); // Translation vector in camera frame
+//	getCameraPose(R,tVec);
+//
+//	// Set Voxel parameters
+//	int gridsize = 64;   // Must be 2^x
+//	float spacing_in_m = 0.05;
+//
 
-	// Needs to be edited
-	// Define Camera orientation and position w.r.t. grid
-	cv::Mat R(3, 3, CV_32F);
-	cv::Mat tVec(3, 1, CV_32F); // Translation vector in camera frame
-	getCameraPose(R,tVec);
-
-
-/*
-	// Set Voxel parameters
-	int gridsize = 64;   // Must be 2^x
-	float spacing_in_m = 0.05;
-
+	std::cout << gridsize << std::endl;
 	// Setup voxel structure to load the TSDF in
 	int sz[3] = {gridsize,gridsize,gridsize};
 	Mat FilledVoxels(3,sz, CV_32FC1, Scalar::all(0));
-
-	// Setup the grid
-	grid.setParameters(gridsize, spacing_in_m, intrinsicMat, R, tVec);
+//
+//	// Setup the grid
+//	grid.setParameters(gridsize, spacing_in_m, intrinsicMat, R, tVec);
 	// Fill in voxels
 	grid.fillVoxels(filtered1, FilledVoxels);
 
-*/
 	ROS_INFO("Voxel");
 
-	cv::waitKey(30000);
+//	cv::waitKey(1000);
 
     /* ========================================== *\
      * 		3. Fusion
@@ -184,6 +193,14 @@ int main(int argc, char** argv)
 
 	// register publisher for the merged clouds
 	pub_ = nh.advertise<sensor_msgs::Image>(ros::this_node::getName() + "/preprocessed_data", 1);
+
+	// Set up the voxel grid objects for both cameras
+	getCameraParameters(intrinsicMat);
+	getCameraPose(R,tVec);
+	gridsize = 64;   // Must be 2^x
+	spacing_in_m = 0.05;
+	grid.setParameters(gridsize, spacing_in_m, intrinsicMat, R, tVec);
+
 
 	ROS_INFO("Preprocessing node initalized.");
 
