@@ -60,4 +60,5 @@ target_link_libraries(ext ${PCL_LIBRARIES} libvtkCommon.so libvtkFiltering.so ) 
 
 ### TESTS
 rosbuild_add_executable(test_config test/test_config.cpp)
+rosbuild_add_executable(test_filters test/test_filters.cpp)
 
