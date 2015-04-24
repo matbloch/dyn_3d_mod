@@ -2,8 +2,24 @@
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
+
+// OpenCV includes
+#include <opencv2/nonfree/features2d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+
+// PCL
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/point_cloud.h>
+
+// Message filters
+#include <message_filters/subscriber.h>
+#include <message_filters/time_synchronizer.h>
+#include <sensor_msgs/Image.h>
+#include <sensor_msgs/CameraInfo.h>
+#include <message_filters/sync_policies/exact_time.h>		// exact time synchronization
+#include <message_filters/sync_policies/approximate_time.h>	// approximate time synchronization
+
 // Eigen
 #include <Eigen/Dense>
 
@@ -12,19 +28,19 @@
 #include <cv/filters.h>
 #include "cv/voxel_grid.h"
 
-
 // status
 bool in_calibration = false;
 bool calib_is_finished = false;
 bool camera_is_connected = false;
 
-// settings
+// object handlers
 ConfigHandler conf;
 ImageFilters filters;
 voxelGrid grid;
 
 // globals
 ros::Publisher pub_;
+
 
 void getCameraParameters(cv::Mat intrinsicMat);
 void getCameraPose(cv::Mat R, cv::Mat tVec);
@@ -62,29 +78,32 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
     }
 
     /* ========================================== *\
-     * 		1. Frame transformation
+     * 		1. Filtering
     \* ========================================== */
-
-    /*
-     * cv_ptr1->image ...
-     */
 
     cv::Mat filtered1;
     cv::Mat filtered2;
 
     // prefiltering
-    filters.gaussian(cv_ptr1, filtered1);
-    filters.gaussian(cv_ptr1, filtered2);
+    filters.bilateral(cv_ptr1->image, filtered1);
+    filters.bilateral(cv_ptr2->image, filtered2);
 
-    // display filter result
-	cv::imshow("first image", filtered1);
-	cv::waitKey(3);
-	cv::imshow("second image", filtered2);
-	cv::waitKey(3);
+    /*
+     * store depth data as .yml
+    cv::FileStorage storage("test_data.yml", cv::FileStorage::WRITE);
+    storage << "img" << filtered1;
+    storage.release();
+
+
+    */
+
+	cv::imshow("filtered", filtered1);
+	cv::waitKey(30000);
 
     /* ========================================== *\
      * 		2. Voxel grid
     \* ========================================== */
+
 
     // get extrinsics
     Eigen::Matrix4f extrinsics;
@@ -100,8 +119,10 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
 	cv::Mat tVec(3, 1, CV_32F); // Translation vector in camera frame
 	getCameraPose(R,tVec);
 
+
+/*
 	// Set Voxel parameters
-	int gridsize = 128;   // Must be 2^x
+	int gridsize = 64;   // Must be 2^x
 	float spacing_in_m = 0.05;
 
 	// Setup voxel structure to load the TSDF in
@@ -111,8 +132,12 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
 	// Setup the grid
 	grid.setParameters(gridsize, spacing_in_m, intrinsicMat, R, tVec);
 	// Fill in voxels
-	grid.fillVoxels(cv_ptr1>image, FilledVoxels);
+	grid.fillVoxels(filtered1, FilledVoxels);
 
+*/
+	ROS_INFO("Voxel");
+
+	cv::waitKey(30000);
 
     /* ========================================== *\
      * 		3. Fusion
@@ -124,10 +149,10 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
     \* ========================================== */
 
 	// convert back to ROS message
-    pcl::toROSMsg(output_pcl, output);
+    //pcl::toROSMsg(output_pcl, output);
 
     // publish the concatenated point cloud
-    pub_.publish(output);
+    //pub_.publish(output);
 
 }
 
@@ -144,8 +169,8 @@ int main(int argc, char** argv)
 	ros::NodeHandle nh;
 
 	// define subscribers
-	message_filters::Subscriber<sensor_msgs::Image> depth_sub_1(nh, "/camera1/depth/image", 1);
-	message_filters::Subscriber<sensor_msgs::Image> depth_sub_2(nh, "/camera2/depth/image", 1);
+	message_filters::Subscriber<sensor_msgs::Image> depth_sub_1(nh, "/camera1/depth/image_raw", 1);
+	message_filters::Subscriber<sensor_msgs::Image> depth_sub_2(nh, "/camera2/depth/image_raw", 1);
 
 	// callback if message with same timestaps are received (buffer length: 10)
 	typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image,
@@ -169,6 +194,8 @@ int main(int argc, char** argv)
 
 	return 0;
 }
+
+
 
 void getCameraParameters(cv::Mat intrinsicMat)
 {

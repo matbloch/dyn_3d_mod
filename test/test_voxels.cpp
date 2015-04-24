@@ -15,6 +15,13 @@
 
 int main(int argc, char** argv)
 {
+
+	cv::Mat img;
+	cv::FileStorage storage("recordings/test_data.yml", cv::FileStorage::READ);
+	storage["img"] >> img;
+	storage.release();
+
+
 	// Read the kinect image
 	cv::Mat kinectimage(480, 640, CV_32F, Scalar(5));
 
