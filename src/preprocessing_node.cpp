@@ -36,15 +36,21 @@ bool camera_is_connected = false;
 // object handlers
 ConfigHandler conf;
 ImageFilters filters;
-voxelGrid grid;
+voxelGrid grid1;
+voxelGrid grid2;
 
 // globals
 ros::Publisher pub_;
 cv::Mat intrinsicMat(3, 3, CV_32F); // intrinsic matrix
-cv::Mat R(3, 3, CV_32F);    // Rotation vector
-cv::Mat tVec(3, 1, CV_32F); // Translation vector in camera frame
+cv::Mat R1(3, 3, CV_32F);    // Rotation vector
+cv::Mat tVec1(3, 1, CV_32F); // Translation vector in camera frame
+cv::Mat R2(3, 3, CV_32F);    // Rotation vector
+cv::Mat tVec2(3, 1, CV_32F); // Translation vector in camera frame
 int gridsize;   // Must be 2^x
 float spacing_in_m;
+cv::Mat FilledVoxels1;
+cv::Mat FilledVoxels2;
+cv::Mat FusedVoxels;
 
 
 void getCameraParameters(cv::Mat intrinsicMat);
@@ -116,35 +122,13 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
 
 
     // get extrinsics
-    Eigen::Matrix4f extrinsics;
-	conf.getOptionMatrix("camera_parameters.extrinsics", extrinsics);
+//    Eigen::Matrix4f extrinsics;
+//	conf.getOptionMatrix("camera_parameters.extrinsics", extrinsics);
 
-//	// Define intrinsic camera parameters
-//	cv::Mat intrinsicMat(3, 3, CV_32F); // intrinsic matrix
-//	getCameraParameters(intrinsicMat);
-//
-//	// Needs to be edited
-//	// Define Camera orientation and position w.r.t. grid
-//	cv::Mat R(3, 3, CV_32F);
-//	cv::Mat tVec(3, 1, CV_32F); // Translation vector in camera frame
-//	getCameraPose(R,tVec);
-//
-//	// Set Voxel parameters
-//	int gridsize = 64;   // Must be 2^x
-//	float spacing_in_m = 0.05;
-//
+	grid1.fillVoxels(filtered1, FilledVoxels1);
+	grid2.fillVoxels(filtered2, FilledVoxels2);
 
-	std::cout << gridsize << std::endl;
-	// Setup voxel structure to load the TSDF in
-	int sz[3] = {gridsize,gridsize,gridsize};
-	Mat FilledVoxels(3,sz, CV_32FC1, Scalar::all(0));
-//
-//	// Setup the grid
-//	grid.setParameters(gridsize, spacing_in_m, intrinsicMat, R, tVec);
-	// Fill in voxels
-	grid.fillVoxels(filtered1, FilledVoxels);
-
-	ROS_INFO("Voxel");
+	ROS_INFO("Voxels filled");
 
 //	cv::waitKey(1000);
 
@@ -152,6 +136,7 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
      * 		3. Fusion
     \* ========================================== */
 
+	FusedVoxels = 0.5*(FilledVoxels1 + FilledVoxels2);
 
     /* ========================================== *\
      * 		4. Publishing
@@ -196,14 +181,21 @@ int main(int argc, char** argv)
 
 	// Set up the voxel grid objects for both cameras
 	getCameraParameters(intrinsicMat);
-	getCameraPose(R,tVec);
+	getCameraPose(R1,tVec1);
+	getCameraPose(R2,tVec2);
 	gridsize = 64;   // Must be 2^x
 	spacing_in_m = 0.05;
-	grid.setParameters(gridsize, spacing_in_m, intrinsicMat, R, tVec);
+	grid1.setParameters(gridsize, spacing_in_m, intrinsicMat, R1, tVec1);
+	grid2.setParameters(gridsize, spacing_in_m, intrinsicMat, R2, tVec2);
+
+	// Setup voxel structure to load the TSDF in
+	int sz[3] = {gridsize,gridsize,gridsize};
+	FilledVoxels1 = Mat(3,sz, CV_32FC1, Scalar::all(0));
+	FilledVoxels2 = Mat(3,sz, CV_32FC1, Scalar::all(0));
+	FusedVoxels = Mat(3,sz, CV_32FC1, Scalar::all(0));
 
 
 	ROS_INFO("Preprocessing node initalized.");
-
 
 	while(ros::ok()){
 	  	ros::spinOnce();
