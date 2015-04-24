@@ -13,7 +13,7 @@ class voxelGrid {
 
   public:
 		// Constructor setting all private parameters and projecting the voxels into the camera image
-		voxelGrid(int,float,Mat,Mat,Mat);
+		voxelGrid();
 
 		// Main function taking a 480X640 depth image and returning the filled in voxels in second input
 		void fillVoxels(Mat, Mat);
@@ -21,6 +21,9 @@ class voxelGrid {
 		// input the voxels according to:
 		//		int sz[3] = {gridsize,gridsize,gridsize};
 		//	    Mat FilledVoxels(3,sz, CV_32FC1, Scalar::all(0));
+
+
+		void setParameters(int,float,Mat,Mat,Mat);
 
   private:
 		/* Parameters */
@@ -41,14 +44,19 @@ class voxelGrid {
 		void calcVoxel_Depth_Pixels();
 };
 
-
-
-
 /* ========================================== *\
  * 	          Constructor function
 \* ========================================== */
 
-voxelGrid::voxelGrid(int a_gridsize, float a_spacing_in_m, Mat a_intrinsicMat, Mat a_R, Mat a_tVec) {
+voxelGrid::voxelGrid() {
+
+}
+
+/* ========================================== *\
+ * 	          Parameters
+\* ========================================== */
+
+void voxelGrid::setParameters(int a_gridsize, float a_spacing_in_m, Mat a_intrinsicMat, Mat a_R, Mat a_tVec) {
 	// Set private parameters
 	gridsize = a_gridsize;
 	spacing_in_m = a_spacing_in_m;
@@ -61,7 +69,7 @@ voxelGrid::voxelGrid(int a_gridsize, float a_spacing_in_m, Mat a_intrinsicMat, M
 	d_truncate = 0.05;
 
 	// Calculate a vector for the voxel positions in space in [meters]
-	units(std::vector<float> (gridsize));
+	units = std::vector<float> (gridsize);
 	for (int n = 0; n<gridsize; n++)
 	{
 		units[n] = spacing_in_m*((n+1)-(gridsize+1)/2.0);
@@ -73,7 +81,6 @@ voxelGrid::voxelGrid(int a_gridsize, float a_spacing_in_m, Mat a_intrinsicMat, M
 	// Project voxels into image plane and create Mat Voxels
 	calcVoxel_Depth_Pixels();
 }
-
 
 /* ========================================== *\
  * 	          Configure voxel grid

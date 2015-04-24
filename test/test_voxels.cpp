@@ -34,7 +34,7 @@ int main(int argc, char** argv)
 		int sz[3] = {gridsize,gridsize,gridsize};
 		Mat FilledVoxels(3,sz, CV_32FC1, Scalar::all(0));
 
-		grid(gridsize, spacing_in_m, intrinsicMat, R, tVec);
+		grid.setParameters(gridsize, spacing_in_m, intrinsicMat, R, tVec);
 		grid.fillVoxels(kinectimage, FilledVoxels);
 
 		return 0;
