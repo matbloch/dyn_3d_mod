@@ -25,11 +25,12 @@ class voxelGrid {
 
 		void setParameters(int,float,Mat,Mat,Mat);
 
+		std::vector<float> units; // [meters]
+
   private:
 		/* Parameters */
 		int gridsize;
 		float spacing_in_m;
-		std::vector<float> units; // [meters]
 
 		float d_margin;
 		float d_truncate;
