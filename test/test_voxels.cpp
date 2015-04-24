@@ -28,14 +28,22 @@ int main(int argc, char** argv)
 		getCameraPose(R,tVec);
 
 		// Set Voxel parameters
-		int gridsize = 4;   // Must be 2^x
+		int gridsize = 256;   // Must be 2^x
 		float spacing_in_m = 0.02;
 
 		int sz[3] = {gridsize,gridsize,gridsize};
 		Mat FilledVoxels(3,sz, CV_32FC1, Scalar::all(0));
 
+
+
 		grid.setParameters(gridsize, spacing_in_m, intrinsicMat, R, tVec);
+		//Clock in
+		float t = (float)getTickCount();
 		grid.fillVoxels(kinectimage, FilledVoxels);
+
+		// Clock out
+		t = ((float)getTickCount() - t)/getTickFrequency();
+		std::cout << "Times passed in seconds: " << std::setprecision(5) << t << std::endl;
 
 		return 0;
 }

@@ -49,7 +49,9 @@ class voxelGrid {
 \* ========================================== */
 
 voxelGrid::voxelGrid() {
-
+	intrinsicMat = Mat(3, 3, CV_32F); // intrinsic matrix
+	R = Mat(3, 3, CV_32F);
+	tVec = Mat(3, 1, CV_32F); // Translation vector in camera frame
 }
 
 /* ========================================== *\
@@ -76,7 +78,7 @@ void voxelGrid::setParameters(int a_gridsize, float a_spacing_in_m, Mat a_intrin
 	}
 
 	int sz[3] = {gridsize,gridsize,gridsize};
-	Mat Voxels(3,sz, CV_32FC3, Scalar::all(0));
+	Voxels = Mat(3,sz, CV_32FC3, Scalar::all(0));
 
 	// Project voxels into image plane and create Mat Voxels
 	calcVoxel_Depth_Pixels();
