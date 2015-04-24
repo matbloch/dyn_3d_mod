@@ -114,7 +114,7 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
     */
 
 //	cv::imshow("filtered", filtered1);
-//	cv::waitKey(1000);
+//	cv::waitKey(30000);
 
     /* ========================================== *\
      * 		2. Voxel grid
@@ -129,8 +129,6 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
 	grid2.fillVoxels(filtered2, FilledVoxels2);
 
 	ROS_INFO("Voxels filled");
-
-//	cv::waitKey(1000);
 
     /* ========================================== *\
      * 		3. Fusion
@@ -193,7 +191,6 @@ int main(int argc, char** argv)
 	FilledVoxels1 = Mat(3,sz, CV_32FC1, Scalar::all(0));
 	FilledVoxels2 = Mat(3,sz, CV_32FC1, Scalar::all(0));
 	FusedVoxels = Mat(3,sz, CV_32FC1, Scalar::all(0));
-
 
 	ROS_INFO("Preprocessing node initalized.");
 
