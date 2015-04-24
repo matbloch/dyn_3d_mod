@@ -16,36 +16,36 @@
 int main(int argc, char** argv)
 {
 	// Read the kinect image
-		cv::Mat kinectimage(480, 640, CV_32F, Scalar(5));
+	cv::Mat kinectimage(480, 640, CV_32F, Scalar(5));
 
-		// Define intrinsic camera parameters
-		cv::Mat intrinsicMat(3, 3, CV_32F); // intrinsic matrix
-		getCameraParameters(intrinsicMat);
+	// Define intrinsic camera parameters
+	cv::Mat intrinsicMat(3, 3, CV_32F); // intrinsic matrix
+	getCameraParameters(intrinsicMat);
 
-		// Define Camera orientation and position
-		cv::Mat R(3, 3, CV_32F);
-		cv::Mat tVec(3, 1, CV_32F); // Translation vector in camera frame
-		getCameraPose(R,tVec);
+	// Define Camera orientation and position
+	cv::Mat R(3, 3, CV_32F);
+	cv::Mat tVec(3, 1, CV_32F); // Translation vector in camera frame
+	getCameraPose(R,tVec);
 
-		// Set Voxel parameters
-		int gridsize = 256;   // Must be 2^x
-		float spacing_in_m = 0.02;
+	// Set Voxel parameters
+	int gridsize = 256;   // Must be 2^x
+	float spacing_in_m = 0.02;
 
-		int sz[3] = {gridsize,gridsize,gridsize};
-		Mat FilledVoxels(3,sz, CV_32FC1, Scalar::all(0));
+	int sz[3] = {gridsize,gridsize,gridsize};
+	Mat FilledVoxels(3,sz, CV_32FC1, Scalar::all(0));
 
 
 
-		grid.setParameters(gridsize, spacing_in_m, intrinsicMat, R, tVec);
-		//Clock in
-		float t = (float)getTickCount();
-		grid.fillVoxels(kinectimage, FilledVoxels);
+	grid.setParameters(gridsize, spacing_in_m, intrinsicMat, R, tVec);
+	//Clock in
+	float t = (float)getTickCount();
+	grid.fillVoxels(kinectimage, FilledVoxels);
 
-		// Clock out
-		t = ((float)getTickCount() - t)/getTickFrequency();
-		std::cout << "Times passed in seconds: " << std::setprecision(5) << t << std::endl;
+	// Clock out
+	t = ((float)getTickCount() - t)/getTickFrequency();
+	std::cout << "Times passed in seconds: " << std::setprecision(5) << t << std::endl;
 
-		return 0;
+	return 0;
 }
 
 /* ========================================== *\
