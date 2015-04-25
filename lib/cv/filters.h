@@ -8,10 +8,10 @@ class ImageFilters
 
 
 		/* Bilateral filtering */
-		static void bilateral(cv::Mat in, cv::Mat out, int window_size);
+		static void bilateral(cv::Mat in, cv::Mat &out, int window_size);
 
 		/* Gaussian filtering */
-		static void gaussian(cv::Mat in, cv::Mat out, int filter_size, int filter_order);
+		static void gaussian(cv::Mat in, cv::Mat &out, int filter_size, int filter_order);
 
 		ImageFilters(void);
 
@@ -26,12 +26,12 @@ ImageFilters::ImageFilters( void )
 
 }
 
-void ImageFilters::bilateral(cv::Mat in, cv::Mat out, int window_size = 5)
+void ImageFilters::bilateral(cv::Mat in, cv::Mat &out, int window_size = 5)
 {
 	cv::bilateralFilter ( in, out, window_size, window_size*2, window_size/2 );
 }
 
-void ImageFilters::gaussian(cv::Mat in, cv::Mat out, int filter_size = 11, int filter_order = 1)
+void ImageFilters::gaussian(cv::Mat in, cv::Mat &out, int filter_size = 11, int filter_order = 1)
 {
 	for(int i=1;i<=filter_order;i++){
 		if(i==1){

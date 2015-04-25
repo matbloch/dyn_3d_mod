@@ -3,6 +3,12 @@
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
 
+#include <iostream>
+#include <string>
+#include <termios.h>
+#include <unistd.h>
+#include <atomic>
+
 // OpenCV includes
 #include <opencv2/nonfree/features2d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -20,6 +26,9 @@
 #include <message_filters/sync_policies/exact_time.h>		// exact time synchronization
 #include <message_filters/sync_policies/approximate_time.h>	// approximate time synchronization
 
+// Boost
+#include <boost/thread/thread.hpp>
+
 // Eigen
 #include <Eigen/Dense>
 
@@ -27,11 +36,8 @@
 #include <config/config_handler.h>
 #include <cv/filters.h>
 #include "cv/voxel_grid.h"
-
-// status
-bool in_calibration = false;
-bool calib_is_finished = false;
-bool camera_is_connected = false;
+#include "misc/colio.h"
+#include "definitions.h"
 
 // object handlers
 ConfigHandler conf;
@@ -52,23 +58,29 @@ cv::Mat FilledVoxels1;
 cv::Mat FilledVoxels2;
 cv::Mat FusedVoxels;
 
+// status
+std::atomic<bool> recording(false);
+std::atomic<bool> recording_finished(false);
+std::atomic<bool> camera_is_connected(false);
+std::atomic<bool> camera_timed_out(false);
+
 
 void getCameraParameters(cv::Mat intrinsicMat);
 void getCameraPose(cv::Mat R, cv::Mat tVec);
+void print_instructions();
+
+void ros_loop(unsigned int,unsigned int);	    // includes the ros spinner
+void interface_loop();  // checks for keyboard inputs
 
 void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor_msgs::ImageConstPtr& msg2)
 {
 
-	/*
-	 * TODO:
-	 * 1. frame transformation
-	 * 2. Voxel grid
-	 * 3. Fusion
-	 * 4. Publish as custom message
-	 */
+	//ROS_INFO("Synced callback was called.");
 
-
-	ROS_INFO("Synced callback was called.");
+	// update connection status
+	if(!camera_is_connected){camera_is_connected=true;}
+	// check recording status
+	if(!recording){return;}
 
     /* ========================================== *\
      * 		0. OpenCV conversion
@@ -95,13 +107,12 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
     cv::Mat filtered1;
     cv::Mat filtered2;
 
-    // No filtering
     filtered1 = cv_ptr1->image;
     filtered2 = cv_ptr2->image;
 
-    // prefiltering
-//    filters.bilateral(cv_ptr1->image, filtered1);
-//    filters.bilateral(cv_ptr2->image, filtered2);
+	// prefiltering
+	//filters.bilateral(cv_ptr1->image, filtered1);
+	//filters.bilateral(cv_ptr2->image, filtered2);
 
 
     /*
@@ -113,8 +124,8 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
 
     */
 
-//	cv::imshow("filtered", filtered1);
-//	cv::waitKey(30000);
+	cv::imshow("filtered", filtered1);
+	cv::waitKey(30000);
 
     /* ========================================== *\
      * 		2. Voxel grid
@@ -128,7 +139,7 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
 	grid1.fillVoxels(filtered1, FilledVoxels1);
 	grid2.fillVoxels(filtered2, FilledVoxels2);
 
-	ROS_INFO("Voxels filled");
+	//ROS_INFO("Voxels filled");
 
     /* ========================================== *\
      * 		3. Fusion
@@ -158,11 +169,13 @@ int main(int argc, char** argv)
 	 */
 
 	ros::init(argc, argv, "dyn_3d_photo");
-	ros::NodeHandle nh;
+	ros::NodeHandle nh_;
+
+
 
 	// define subscribers
-	message_filters::Subscriber<sensor_msgs::Image> depth_sub_1(nh, "/camera1/depth/image_raw", 1);
-	message_filters::Subscriber<sensor_msgs::Image> depth_sub_2(nh, "/camera2/depth/image_raw", 1);
+	message_filters::Subscriber<sensor_msgs::Image> depth_sub_1(nh_, "/camera1/depth/image_raw", 1);
+	message_filters::Subscriber<sensor_msgs::Image> depth_sub_2(nh_, "/camera2/depth/image_raw", 1);
 
 	// callback if message with same timestaps are received (buffer length: 10)
 	typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image,
@@ -175,7 +188,7 @@ int main(int argc, char** argv)
 	sync.registerCallback(boost::bind(&preprocessing_callback, _1, _2));
 
 	// register publisher for the merged clouds
-	pub_ = nh.advertise<sensor_msgs::Image>(ros::this_node::getName() + "/preprocessed_data", 1);
+	pub_ = nh_.advertise<sensor_msgs::Image>(ros::this_node::getName() + "/preprocessed_data", 1);
 
 	// Set up the voxel grid objects for both cameras
 	getCameraParameters(intrinsicMat);
@@ -193,10 +206,22 @@ int main(int argc, char** argv)
 	FusedVoxels = Mat(3,sz, CV_32FC1, Scalar::all(0));
 
 	ROS_INFO("Preprocessing node initalized.");
+	print_instructions();
 
-	while(ros::ok()){
-	  	ros::spinOnce();
-	}
+	// start threads
+    boost::thread_group threads;
+
+    void find_the_question(int the_answer);
+
+    //boost::thread t1(ros_loop, 30, 5);
+    //boost::thread t2(interface_loop);
+
+    boost::thread *t1 = new boost::thread(ros_loop, 30, 5);
+    boost::thread *t2 = new boost::thread(interface_loop);
+    threads.add_thread(t1);
+    threads.add_thread(t2);
+
+    threads.join_all();
 
 	return 0;
 }
@@ -232,3 +257,84 @@ void getCameraPose(cv::Mat R, cv::Mat tVec)
 	tVec.at<float>(1) = 0;
 	tVec.at<float>(2) = -5;
 }
+
+void print_instructions(){
+
+	std::cout<<"\n";
+	std::cout << "=================================" << std::endl;
+	std::cout << " INSTRUCTION:" << std::endl;
+	std::cout << "---------------------------------" << std::endl;
+	std::cout << " [space]: start/stop recording" << std::endl;
+	std::cout << "=================================" << std::endl;
+	std::cout<<"\n";
+
+}
+
+void ros_loop(unsigned int rate = 30, unsigned int  t = 5){
+
+
+	std::cout <<  "--- ros loop" << std::endl;
+
+	ros::Rate r(rate); // 30 Hz
+
+	unsigned int timeout = t;  // connection timeout in seconds
+	time_t init_time = time(0);
+
+	while (!recording_finished)	// spin until calibration has ended
+	{
+
+		if(!camera_is_connected && time(0) > timeout + init_time){
+
+			camera_timed_out = true;
+			std::cout << RED << "--- Camera connection timed out." << RESET << endl;
+			break;
+		}
+
+		ros::spinOnce();
+		r.sleep();
+	}
+
+	return;
+
+
+}
+void interface_loop(){
+
+	char k;
+
+	// wait till camera is connected
+
+	while(!camera_is_connected){
+
+		if(camera_timed_out){
+			return;
+		}
+
+		usleep(300);
+	}
+
+
+	// start/stop recording
+	std::cout << GREEN << "--- Camera connection established. Ready to record." << RESET << endl;
+	while (!recording_finished){
+
+		k = getch();
+
+		if(k == ' '){
+			if(recording){
+
+				recording = false;
+				recording_finished = true;	// stops the ROS spinner
+
+				std::cout << GREEN << "--- End recording..." << RESET << endl;
+			}else{
+				recording = true;
+				std::cout << GREEN << "--- Start recording..." << RESET << endl;
+			}
+		}
+	}
+
+	return;
+
+}
+
