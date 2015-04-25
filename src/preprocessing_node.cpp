@@ -107,25 +107,9 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
     cv::Mat filtered1;
     cv::Mat filtered2;
 
-    filtered1 = cv_ptr1->image;
-    filtered2 = cv_ptr2->image;
-
 	// prefiltering
-	//filters.bilateral(cv_ptr1->image, filtered1);
-	//filters.bilateral(cv_ptr2->image, filtered2);
-
-
-    /*
-     * store depth data as .yml
-    cv::FileStorage storage("test_data.yml", cv::FileStorage::WRITE);
-    storage << "img" << filtered1;
-    storage.release();
-
-
-    */
-
-	cv::imshow("filtered", filtered1);
-	cv::waitKey(30000);
+	filters.bilateral(cv_ptr1->image, filtered1);
+	filters.bilateral(cv_ptr2->image, filtered2);
 
     /* ========================================== *\
      * 		2. Voxel grid

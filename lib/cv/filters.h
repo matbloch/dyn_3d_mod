@@ -28,7 +28,11 @@ ImageFilters::ImageFilters( void )
 
 void ImageFilters::bilateral(cv::Mat in, cv::Mat &out, int window_size = 5)
 {
-	cv::bilateralFilter ( in, out, window_size, window_size*2, window_size/2 );
+
+    const double depth_sigma = 0.03;
+    const double space_sigma = 4.5;  // in pixels
+
+	cv::bilateralFilter ( in, out, -1, depth_sigma, window_size );
 }
 
 void ImageFilters::gaussian(cv::Mat in, cv::Mat &out, int filter_size = 11, int filter_order = 1)
