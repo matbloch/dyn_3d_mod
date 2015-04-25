@@ -8,7 +8,7 @@ class ImageFilters
 
 
 		/* Bilateral filtering */
-		static void bilateral(cv::Mat in, cv::Mat &out, int window_size);
+		static void bilateral(cv::Mat in, cv::Mat &out, int window_size, float depth_sigma);
 
 		/* Gaussian filtering */
 		static void gaussian(cv::Mat in, cv::Mat &out, int filter_size, int filter_order);
@@ -26,12 +26,8 @@ ImageFilters::ImageFilters( void )
 
 }
 
-void ImageFilters::bilateral(cv::Mat in, cv::Mat &out, int window_size = 5)
+void ImageFilters::bilateral(cv::Mat in, cv::Mat &out, int window_size = 5, float depth_sigma = 0.03)
 {
-
-    const double depth_sigma = 0.03;
-    const double space_sigma = 4.5;  // in pixels
-
 	cv::bilateralFilter ( in, out, -1, depth_sigma, window_size );
 }
 
