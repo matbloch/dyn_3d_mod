@@ -2,33 +2,8 @@
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
-
-#include <iostream>
-#include <string>
-#include <termios.h>
-#include <unistd.h>
-#include <atomic>
-
-// OpenCV includes
-#include <opencv2/nonfree/features2d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
-
-// PCL
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl/point_cloud.h>
-
-// Message filters
-#include <message_filters/subscriber.h>
-#include <message_filters/time_synchronizer.h>
-#include <sensor_msgs/Image.h>
-#include <sensor_msgs/CameraInfo.h>
-#include <message_filters/sync_policies/exact_time.h>		// exact time synchronization
-#include <message_filters/sync_policies/approximate_time.h>	// approximate time synchronization
-
-// Boost
-#include <boost/thread/thread.hpp>
-
 // Eigen
 #include <Eigen/Dense>
 
@@ -36,51 +11,47 @@
 #include <config/config_handler.h>
 #include <cv/filters.h>
 #include "cv/voxel_grid.h"
-#include "misc/colio.h"
-#include "definitions.h"
 
-// object handlers
+
+// status
+bool in_calibration = false;
+bool calib_is_finished = false;
+bool camera_is_connected = false;
+bool isfirst = true;
+
+// grid status
+static int MAX_DIM = 7;
+static int GRID_SIZE = (int)pow(2,MAX_DIM);
+static float spacing_in_m = 0.02;
+float max_v[3] = {(float)(GRID_SIZE-1), (float)(GRID_SIZE-1), (float)(GRID_SIZE-1)};
+float min_v[3] = {0, 0, 0};
+
+TStree::TStree tstree(max_v[0]-min_v[0], max_v, min_v, MAX_DIM);
+
+// settings
 ConfigHandler conf;
 ImageFilters filters;
-voxelGrid grid1;
-voxelGrid grid2;
+voxelGrid grid;
 
 // globals
 ros::Publisher pub_;
-cv::Mat intrinsicMat(3, 3, CV_32F); // intrinsic matrix
-cv::Mat R1(3, 3, CV_32F);    // Rotation vector
-cv::Mat tVec1(3, 1, CV_32F); // Translation vector in camera frame
-cv::Mat R2(3, 3, CV_32F);    // Rotation vector
-cv::Mat tVec2(3, 1, CV_32F); // Translation vector in camera frame
-int gridsize;   // Must be 2^x
-float spacing_in_m;
-cv::Mat FilledVoxels1;
-cv::Mat FilledVoxels2;
-cv::Mat FusedVoxels;
-
-// status
-std::atomic<bool> recording(false);
-std::atomic<bool> recording_finished(false);
-std::atomic<bool> camera_is_connected(false);
-std::atomic<bool> camera_timed_out(false);
-
 
 void getCameraParameters(cv::Mat intrinsicMat);
 void getCameraPose(cv::Mat R, cv::Mat tVec);
-void print_instructions();
-
-void ros_loop(unsigned int,unsigned int);	    // includes the ros spinner
-void interface_loop();  // checks for keyboard inputs
 
 void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor_msgs::ImageConstPtr& msg2)
 {
 
-	//ROS_INFO("Synced callback was called.");
+	/*
+	 * TODO:
+	 * 1. frame transformation
+	 * 2. Voxel grid
+	 * 3. Fusion
+	 * 4. Publish as custom message
+	 */
 
-	// update connection status
-	if(!camera_is_connected){camera_is_connected=true;}
-	// check recording status
-	if(!recording){return;}
+
+	ROS_INFO("Synced callback was called.");
 
     /* ========================================== *\
      * 		0. OpenCV conversion
@@ -101,45 +72,92 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
     }
 
     /* ========================================== *\
-     * 		1. Filtering
+     * 		1. Frame transformation
     \* ========================================== */
+
+    /*
+     * cv_ptr1->image ...
+     */
 
     cv::Mat filtered1;
     cv::Mat filtered2;
 
-	// prefiltering
-	filters.bilateral(cv_ptr1->image, filtered1);
-	filters.bilateral(cv_ptr2->image, filtered2);
+    // prefiltering
+    filters.gaussian(cv_ptr1, filtered1);
+    filters.gaussian(cv_ptr1, filtered2);
+
+    // display filter result
+	cv::imshow("first image", filtered1);
+	cv::waitKey(3);
+	cv::imshow("second image", filtered2);
+	cv::waitKey(3);
 
     /* ========================================== *\
      * 		2. Voxel grid
     \* ========================================== */
 
-
     // get extrinsics
-//    Eigen::Matrix4f extrinsics;
-//	conf.getOptionMatrix("camera_parameters.extrinsics", extrinsics);
+    Eigen::Matrix4f extrinsics;
+	conf.getOptionMatrix("camera_parameters.extrinsics", extrinsics);
 
-	grid1.fillVoxels(filtered1, FilledVoxels1);
-	grid2.fillVoxels(filtered2, FilledVoxels2);
+	// Define intrinsic camera parameters
+	cv::Mat intrinsicMat(3, 3, CV_32F); // intrinsic matrix
+	getCameraParameters(intrinsicMat);
 
-	//ROS_INFO("Voxels filled");
+	// Needs to be edited
+	// Define Camera orientation and position w.r.t. grid
+	cv::Mat R(3, 3, CV_32F);
+	cv::Mat tVec(3, 1, CV_32F); // Translation vector in camera frame
+	getCameraPose(R,tVec);
+
+	// Setup voxel structure to load the TSDF in
+	int sz[3] = {GRID_SIZE,GRID_SIZE,GRID_SIZE};
+	Mat FilledVoxels(3,sz, CV_32FC1, Scalar::all(0));
+
+	// Setup the grid
+	grid.setParameters(GRID_SIZE, spacing_in_m, intrinsicMat, R, tVec);
+	// Fill in voxels
+	grid.fillVoxels(cv_ptr1>image, FilledVoxels);
+
 
     /* ========================================== *\
      * 		3. Fusion
     \* ========================================== */
 
-	FusedVoxels = 0.5*(FilledVoxels1 + FilledVoxels2);
+  //get grid range
+  for(int i=0; i<3; i++){
+    max_v[i] = (grid.units).at(GRID_SIZE-1);
+    min_v[i] = (grid.units).at(0);
+  }
 
+  //initialize tstree
+  if(isfirst){
+    tstree.setGridRange(max_v[0]-min_v[0], max_v, min_v;
+  }
+
+  //reset nan as 1
+  for(int i=0; i<GRID_SIZE; i++){
+    for(int j=0; j<GRID_SIZE; j++){
+      for(int k=0; k<GRID_SIZE; k++){
+        if(isnan(FilledVoxels.at<float>(i,j,k))){
+          FilledVoxels.at<float>(i,j,k) = 1;
+        }
+      }
+    }
+  }
+
+  tstree.insert(FilledVoxels, 0);
+
+  //grid_values = tstree.read(0);
     /* ========================================== *\
      * 		4. Publishing
     \* ========================================== */
 
 	// convert back to ROS message
-    //pcl::toROSMsg(output_pcl, output);
+    pcl::toROSMsg(output_pcl, output);
 
     // publish the concatenated point cloud
-    //pub_.publish(output);
+    pub_.publish(output);
 
 }
 
@@ -153,13 +171,11 @@ int main(int argc, char** argv)
 	 */
 
 	ros::init(argc, argv, "dyn_3d_photo");
-	ros::NodeHandle nh_;
-
-
+	ros::NodeHandle nh;
 
 	// define subscribers
-	message_filters::Subscriber<sensor_msgs::Image> depth_sub_1(nh_, "/camera1/depth/image_raw", 1);
-	message_filters::Subscriber<sensor_msgs::Image> depth_sub_2(nh_, "/camera2/depth/image_raw", 1);
+	message_filters::Subscriber<sensor_msgs::Image> depth_sub_1(nh, "/camera1/depth/image", 1);
+	message_filters::Subscriber<sensor_msgs::Image> depth_sub_2(nh, "/camera2/depth/image", 1);
 
 	// callback if message with same timestaps are received (buffer length: 10)
 	typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image,
@@ -172,45 +188,17 @@ int main(int argc, char** argv)
 	sync.registerCallback(boost::bind(&preprocessing_callback, _1, _2));
 
 	// register publisher for the merged clouds
-	pub_ = nh_.advertise<sensor_msgs::Image>(ros::this_node::getName() + "/preprocessed_data", 1);
-
-	// Set up the voxel grid objects for both cameras
-	getCameraParameters(intrinsicMat);
-	getCameraPose(R1,tVec1);
-	getCameraPose(R2,tVec2);
-	gridsize = 64;   // Must be 2^x
-	spacing_in_m = 0.05;
-	grid1.setParameters(gridsize, spacing_in_m, intrinsicMat, R1, tVec1);
-	grid2.setParameters(gridsize, spacing_in_m, intrinsicMat, R2, tVec2);
-
-	// Setup voxel structure to load the TSDF in
-	int sz[3] = {gridsize,gridsize,gridsize};
-	FilledVoxels1 = Mat(3,sz, CV_32FC1, Scalar::all(0));
-	FilledVoxels2 = Mat(3,sz, CV_32FC1, Scalar::all(0));
-	FusedVoxels = Mat(3,sz, CV_32FC1, Scalar::all(0));
+	pub_ = nh.advertise<sensor_msgs::Image>(ros::this_node::getName() + "/preprocessed_data", 1);
 
 	ROS_INFO("Preprocessing node initalized.");
-	print_instructions();
 
-	// start threads
-    boost::thread_group threads;
 
-    void find_the_question(int the_answer);
-
-    //boost::thread t1(ros_loop, 30, 5);
-    //boost::thread t2(interface_loop);
-
-    boost::thread *t1 = new boost::thread(ros_loop, 30, 5);
-    boost::thread *t2 = new boost::thread(interface_loop);
-    threads.add_thread(t1);
-    threads.add_thread(t2);
-
-    threads.join_all();
+	while(ros::ok()){
+	  	ros::spinOnce();
+	}
 
 	return 0;
 }
-
-
 
 void getCameraParameters(cv::Mat intrinsicMat)
 {
@@ -241,84 +229,3 @@ void getCameraPose(cv::Mat R, cv::Mat tVec)
 	tVec.at<float>(1) = 0;
 	tVec.at<float>(2) = -5;
 }
-
-void print_instructions(){
-
-	std::cout<<"\n";
-	std::cout << "=================================" << std::endl;
-	std::cout << " INSTRUCTION:" << std::endl;
-	std::cout << "---------------------------------" << std::endl;
-	std::cout << " [space]: start/stop recording" << std::endl;
-	std::cout << "=================================" << std::endl;
-	std::cout<<"\n";
-
-}
-
-void ros_loop(unsigned int rate = 30, unsigned int  t = 5){
-
-
-	std::cout <<  "--- ros loop" << std::endl;
-
-	ros::Rate r(rate); // 30 Hz
-
-	unsigned int timeout = t;  // connection timeout in seconds
-	time_t init_time = time(0);
-
-	while (!recording_finished)	// spin until calibration has ended
-	{
-
-		if(!camera_is_connected && time(0) > timeout + init_time){
-
-			camera_timed_out = true;
-			std::cout << RED << "--- Camera connection timed out." << RESET << endl;
-			break;
-		}
-
-		ros::spinOnce();
-		r.sleep();
-	}
-
-	return;
-
-
-}
-void interface_loop(){
-
-	char k;
-
-	// wait till camera is connected
-
-	while(!camera_is_connected){
-
-		if(camera_timed_out){
-			return;
-		}
-
-		usleep(300);
-	}
-
-
-	// start/stop recording
-	std::cout << GREEN << "--- Camera connection established. Ready to record." << RESET << endl;
-	while (!recording_finished){
-
-		k = getch();
-
-		if(k == ' '){
-			if(recording){
-
-				recording = false;
-				recording_finished = true;	// stops the ROS spinner
-
-				std::cout << GREEN << "--- End recording..." << RESET << endl;
-			}else{
-				recording = true;
-				std::cout << GREEN << "--- Start recording..." << RESET << endl;
-			}
-		}
-	}
-
-	return;
-
-}
-
