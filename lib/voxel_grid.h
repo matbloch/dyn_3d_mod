@@ -104,10 +104,10 @@ void voxelGrid::calcVoxel_Depth_Pixels(){
 
 			// Check if pixels are within image
 			if (Voxels.at<cv::Vec3f>(i,j,k)[0]>=640 || Voxels.at<cv::Vec3f>(i,j,k)[0]<0)
-				Voxels.at<cv::Vec3f>(i,j,k)[0] = NAN;
+				Voxels.at<cv::Vec3f>(i,j,k)[0] = 1;
 
 			if (Voxels.at<cv::Vec3f>(i,j,k)[1]>=480 || Voxels.at<cv::Vec3f>(i,j,k)[1]<0)
-				Voxels.at<cv::Vec3f>(i,j,k)[1] = NAN;
+				Voxels.at<cv::Vec3f>(i,j,k)[1] = 1;
 	    }
 }
 
