@@ -46,6 +46,7 @@ find_package( PCL 1.2 REQUIRED segmentation filters visualization )
 # eigen lib
 find_package(Eigen REQUIRED)
 include_directories(${Eigen_INCLUDE_DIRS})
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 ### add header files
 include_directories(${PROJECT_SOURCE_DIR}/lib)	# use #include "myfile.h". With sub-folder of lib: #include "mylib/myfile.h"
@@ -54,6 +55,7 @@ include_directories(${PROJECT_SOURCE_DIR}/lib)	# use #include "myfile.h". With s
 rosbuild_add_executable(main src/main.cpp)
 rosbuild_link_boost(main program_options regex)
 rosbuild_add_executable(preprocessing_node src/preprocessing_node.cpp)
+#rosbuild_add_executable(buffer src/buffer.cpp)
 
 ### EXTRINSICS CALIBRATION
 rosbuild_add_executable(ext src/extrinsics_calibration.cpp)
