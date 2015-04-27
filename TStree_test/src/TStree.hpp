@@ -20,7 +20,7 @@ class TStree{
   public:
     //TStree(float _max_v[3], float _min_v[3], int _max_d){}
 
-    TStree(float _width, float _max_v[3], float _min_v[3], int _max_d) : MAX_DIM(_max_d), WIDTH(_width),  GRID_SIZE(pow(2,_max_d)), GRID_LENGTH(_width/(pow(2,_max_d)-1)){
+    TStree(float _width, float _max_v[3], float _min_v[3], int _max_d) : MAX_DIM(_max_d), WIDTH(_width),  GRID_SIZE(pow(2,_max_d)){
 
       init_tstree();
       for(int i=0; i<3; i++){
@@ -44,6 +44,7 @@ class TStree{
         friend ostream& operator<<(ostream& os, const ValTime& it);
     };
 
+    void setGridRange(float _width, float _max_v[3], float _min_v[3]); 
     void insert(cv::Mat voxel_values, char time);
     void insert(float*** p, char time);
     Eigen::VectorXd read(char time);
@@ -55,22 +56,17 @@ class TStree{
     float MAX_V[3];
     float MIN_V[3];
     const int MAX_DIM;
-    const float WIDTH;
+    int WIDTH;
     const int GRID_SIZE;
-    const float GRID_LENGTH;
 
     void init_tstree();
     tree<float> init_tree(int max_d);
     void make_trees(tree<float>* tr, tree<float>::sibling_iterator current, float width, float c_x, float c_y, float c_z, float x, float y, float z, int d, int max_d, float t);
     tree<float> make_octree(float voxel_width, float max_x, float min_x, float max_y, float min_y, float max_z, float min_z, int max_d, float ***t);
-    tree<float> make_octree2(int max_d, float*** p);
     void merge_trees(tree<vector<ValTime> >* main_tr, tree<vector<ValTime> >::sibling_iterator main_cur,tree<float>* new_tr, tree<float>::sibling_iterator new_cur, int time);
-    void make_trees2(tree<float>* tr, tree<float>::sibling_iterator current, vector<int>* index, int max_d, float*** p);
-    void insertToTree(tree<float>* tr, tree<float>::sibling_iterator current, vector<int> index, float*** p);
     void read_tree(tree<vector<ValTime> >* tr, tree<vector<ValTime> >::sibling_iterator current, vector<int>* index, int t, float* p);
     void read_tree(tree<vector<ValTime> >* tr, tree<vector<ValTime> >::sibling_iterator current, vector<int>* index, int t, Eigen::VectorXd* p);
-    bool all_same(tree<float> *tr, tree<float>::sibling_iterator current);
-    bool all_same(tree<float> *tr, tree<float>::sibling_iterator current, int t);
+    bool all_same(tree<float> tr, tree<float>::sibling_iterator current, int t);
     bool has_value(tree<vector<ValTime> >::sibling_iterator main_cur);
     bool has_value(tree<float>::sibling_iterator current);
     void insertToVoxelPos(vector<int> index, int val, float* p);
@@ -85,6 +81,14 @@ ostream& operator<<(ostream& os, const TStree::ValTime& it)
   return os;
 }
 
+void TSTree::setGridRange(float _width, float _max_v[3], float _min_v[3]){
+
+  WIDTH = _width;
+  for(int i=0; i<3; i++){
+    MAX_V[i] = _max_v[i];
+    MIN_V[i] = _min_v[i];
+  }
+}
 void TStree::insert(cv::Mat voxel_values, char time){
 
   float*** p;
@@ -105,16 +109,14 @@ void TStree::insert(cv::Mat voxel_values, char time){
   }
 
   //main_root = tstree.begin();
-  ///tree<float> tr = make_octree(WIDTH, MAX_V[0], MIN_V[0], MAX_V[1], MIN_V[1], MAX_V[2], MIN_V[2], MAX_DIM, p);
-  tree<float> tr = make_octree2(MAX_DIM, p);
+  tree<float> tr = make_octree(WIDTH, MAX_V[0], MIN_V[0], MAX_V[1], MIN_V[1], MAX_V[2], MIN_V[2], MAX_DIM, p);
   tree<float>::sibling_iterator root;
   root = tr.begin();
-  kptree::print_tree_bracketed(tr, std::cout);
-  cout << "merge" << endl;
-  merge_trees(&tstree, main_root, &tr, root, time);
+  merge_trees(&tstree, main_root, &tr, root, 0);
 }
 
 void TStree::insert(float*** p, char time){
+
 
   //main_root = tstree.begin();
   tree<float> tr = make_octree(WIDTH, MAX_V[0], MIN_V[0], MAX_V[1], MIN_V[1], MAX_V[2], MIN_V[2], MAX_DIM, p);
@@ -173,43 +175,20 @@ void TStree::init_tstree(){
  * tree<float>::sibling_iterator current: node of the octree
  * int t: signed distance value
  */
-bool TStree::all_same(tree<float>* tr, tree<float>::sibling_iterator current, int t){
+bool TStree::all_same(tree<float> tr, tree<float>::sibling_iterator current, int t){
 
   bool ans = true;
   tree<float>::sibling_iterator neighbor;
-  neighbor = ((*tr).parent(current)).begin();
+  neighbor = (tr.parent(current)).begin();
   do{
     if(t != *neighbor && current != neighbor){
       ans = false;
       break;
     }
-  } while(((*tr).parent(neighbor)).end() != ++neighbor);
+  } while((tr.parent(neighbor)).end() != ++neighbor);
   return ans;
 }
 
-/*
- * Check if all neighbors of the node are same
- *
- * tree<float> tr: octree
- * tree<float>::sibling_iterator current: node of the octree
- */
-bool TStree::all_same(tree<float> *tr, tree<float>::sibling_iterator current){
-
-  bool ans = true;
-  tree<float>::sibling_iterator neighbor;
-  neighbor = ((*tr).parent(current)).begin();
-  tree<float>::sibling_iterator lastneightbor;
-  lastneightbor = ((*tr).parent(neighbor)).end();
-  int t = *current;
-  int count = 0;
-  do{
-    if(t != *neighbor){
-      ans = false;
-      break;
-    }
-  } while(lastneightbor != ++neighbor);
-  return ans;
-}
 /*
  * Build octree
  *
@@ -228,7 +207,6 @@ bool TStree::all_same(tree<float> *tr, tree<float>::sibling_iterator current){
  */
 void TStree::make_trees(tree<float>* tr, tree<float>::sibling_iterator current, float width, float c_x, float c_y, float c_z, float x, float y, float z, int d, int max_d, float t){
 
-  cout << "make_trees" << endl;
   if(d < max_d){
     tree<float>::sibling_iterator next;
     next = (*tr).begin(current);
@@ -277,7 +255,7 @@ void TStree::make_trees(tree<float>* tr, tree<float>::sibling_iterator current, 
     *current = t;
   }
   else{
-    if(all_same((tr), current, t)){
+    if(all_same((*tr), current, t)){
       tree<float>::sibling_iterator parent;
       parent = (*tr).parent(current);
       (*tr).erase_children(parent);
@@ -290,7 +268,6 @@ void TStree::make_trees(tree<float>* tr, tree<float>::sibling_iterator current, 
 }
 
 tree<float> TStree::make_octree(float voxel_width, float max_x, float min_x, float max_y, float min_y, float max_z, float min_z, int max_d, float*** t){
-  cout << "make_octree" << endl;
 
   tree<float> tr = init_tree(max_d);
   tree<float>::sibling_iterator root;
@@ -298,26 +275,12 @@ tree<float> TStree::make_octree(float voxel_width, float max_x, float min_x, flo
   for(int x=0; x<GRID_SIZE; x++){
     for(int y=0; y<GRID_SIZE; y++){
       for(int z=0; z<GRID_SIZE; z++){
-        make_trees(&tr, root, voxel_width/2.0, (max_x+min_x)/2.0, (max_y+min_y)/2.0, (max_z+min_z)/2.0, (float)(x*GRID_LENGTH)+min_x, (float)(y*GRID_LENGTH)+min_y, (float)(z*GRID_LENGTH)+min_z, 0, max_d, t[x][y][z]); 
+        make_trees(&tr, root, voxel_width/2.0, (max_x-min_x)/2.0, (max_y-min_y)/2.0, (max_z-min_z)/2.0, (float)x, (float)y, (float)z, 0, max_d, t[x][y][z]); 
       }
     }
   }
   return tr;
 
-}
-
-tree<float> TStree::make_octree2(int max_d, float*** p){
-
-  cout << "make_octree2" << endl;
-  cout << "init_tree" << endl;
-  tree<float> tr = init_tree(max_d);
-  tree<float>::sibling_iterator root;
-  root = tr.begin();
-  vector<int> index;
-  index.clear();
-  cout << "make_tree2" << endl;
-  make_trees2(&tr, root, &index, max_d, p); 
-  return tr;
 }
 /*
  *
@@ -362,134 +325,6 @@ tree<float> TStree::init_tree(int max_d){
 }
 
 /*
- *
- * Initialize octree
- *
- * int max_d: maximum dimension of octree
- */
-void TStree::make_trees2(tree<float>* tr, tree<float>::sibling_iterator current, vector<int>* index, int max_d, float*** p){
-
-  if((*index).size() == max_d){
-    if((*index).size() == MAX_DIM){
-      insertToTree(tr, current, *index, p);
-      if((*index)[max_d-1] == 7){
-        if(all_same((tr), current)){
-          tree<float>::sibling_iterator parent;
-          parent = (*tr).parent(current);
-          int tmp = (*index)[max_d-1];
-          (*index).pop_back();
-          make_trees2(tr, parent, index, --max_d, p);
-          (*index).push_back(tmp);
-          //(*tr).erase_children(parent);
-        }
-      }
-    }
-    else{
-      *current = *((*tr).begin(current));
-      if((*index)[max_d-1] == 7){
-        if(all_same((tr), current)){
-          tree<float>::sibling_iterator parent;
-          parent = (*tr).parent(current);
-          int tmp = (*index)[max_d-1];
-          (*index).pop_back();
-          make_trees2(tr, parent, index, --max_d, p);
-          (*index).push_back(tmp);
-          //(*tr).erase_children(parent);
-        }
-        else{
-          (*tr).erase_children(current);
-        }
-      }
-      else{
-        (*tr).erase_children(current);
-      }
-    }
-    /*
-    else if((*index).size() > MAX_DIM-1){
-      *current = *((*tr).begin(current));
-      if((*index)[max_d-1] == 7){
-        if(all_same((tr), current)){
-          tree<float>::sibling_iterator parent;
-          parent = (*tr).parent(current);
-          int tmp = (*index)[max_d-1];
-          (*index).pop_back();
-          make_trees2(tr, parent, index, --max_d, p);
-          (*index).push_back(tmp);
-          //(*tr).erase_children(parent);
-        }
-      }
-      else{
-        (*tr).erase_children(current);
-      }
-    }
-    else{
-      *current = *((*tr).begin(current));
-      (*tr).erase_children(current);
-    }
-    */
-  }
-  else{
-    tree<float>::sibling_iterator child = (*tr).begin(current);
-    int order = 0;
-    do{
-      (*index).push_back(order);
-      make_trees2(tr, child, index, max_d, p);
-      order++;
-      (*index).pop_back();
-    }while(order != 8 && (*tr).end(current) != ++child);
-  }
-}
-
-/*
- * Convert tree index to voxel position 
- *
- * tree<vector<ValTime> >* t_tr: time tree
- * vector<int>* index: tree hierarchy index vector
- * int t: time frame
- * float *p: array of signed distances of the grid (return)
- */
-
-void TStree::insertToTree(tree<float>* tr, tree<float>::sibling_iterator current, vector<int> index, float*** p){
-  int x = 0;
-  int y = 0;
-  int z = 0;
-  for(int i=0; i<index.size(); i++){
-    switch(index[i]){
-      case 0:
-        break;
-      case 1:
-        z += pow(2,(MAX_DIM-1-i));
-        break;
-      case 2:
-        y += pow(2,(MAX_DIM-1-i));
-        break;
-      case 3:
-        x += pow(2,(MAX_DIM-1-i));
-        break;
-      case 4:
-        z += pow(2,(MAX_DIM-1-i));
-        y += pow(2,(MAX_DIM-1-i));
-        break;
-      case 5:
-        z += pow(2,(MAX_DIM-1-i));
-        x += pow(2,(MAX_DIM-1-i));
-        break;
-      case 6:
-        x += pow(2,(MAX_DIM-1-i));
-        y += pow(2,(MAX_DIM-1-i));
-        break;
-      case 7:
-        x += pow(2,(MAX_DIM-1-i));
-        y += pow(2,(MAX_DIM-1-i));
-        z += pow(2,(MAX_DIM-1-i));
-        break;
-      dafault:
-        break;
-    }
-  }
-  *current = p[x][y][z];
-}
-/*
  * Judge if the node of time-space has a value
  *
  * tree<vector<ValTime> >::sibling_iterator main_cur: node iterator of time-space tree
@@ -530,7 +365,9 @@ bool TStree::has_value(tree<float>::sibling_iterator current){
 
 void TStree::merge_trees(tree<vector<ValTime> >* main_tr, tree<vector<ValTime> >::sibling_iterator main_cur,tree<float>* new_tr, tree<float>::sibling_iterator new_cur, int time){
   if(has_value(new_cur)){
+    cout << "aaa" << endl;
     if(has_value(main_cur)){
+      cout << "bbb" << endl;
       ValTime* it = new ValTime(*new_cur, time);
       if(time == 0){
         (*main_cur).clear();
@@ -540,11 +377,12 @@ void TStree::merge_trees(tree<vector<ValTime> >* main_tr, tree<vector<ValTime> >
         (*main_cur).push_back(*it);
       }
       else{
-        //cout << (*it).val << "," << (*main_cur)[(*main_cur).size()-1].val << endl;
+        cout << (*it).val << "," << (*main_cur)[(*main_cur).size()-1].val << endl;
       }
 
     }
     else{
+      cout << "eee" << endl;
       tree<vector<ValTime> >::sibling_iterator child_main = (*main_tr).begin(main_cur);
       do{
         merge_trees(main_tr, child_main, new_tr, new_cur, time);
@@ -552,7 +390,9 @@ void TStree::merge_trees(tree<vector<ValTime> >* main_tr, tree<vector<ValTime> >
     }
   }
   else{
+    cout << "ccc" << endl;
     if(has_value(main_cur)){
+      cout << "ddd" << endl;
       for(int i=0; i<8; i++){
         (*main_tr).append_child(main_cur, *main_cur);
       }
@@ -660,6 +500,7 @@ void TStree::insertToVoxelPos(vector<int> index, int val, Eigen::VectorXd* p){
     for (unsigned int y=0; y<pow(2,(MAX_DIM-index.size())); ++y)
       for (unsigned int z=0; z<pow(2,(MAX_DIM-index.size())); ++z)
       {
+        cout << x << "," << y << "," << z << endl;
         (*p)[(int)(num + pow(2, MAX_DIM*0) * x + pow(2, MAX_DIM*1) * y + pow(2, MAX_DIM*2) * z)] = val;
       }
 
