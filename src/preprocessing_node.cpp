@@ -122,6 +122,10 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
 	filters.bilateral(cv_ptr1->image, filtered1);
 	filters.bilateral(cv_ptr2->image, filtered2);
 
+	// set NaNs to 99 m (will be ignored in voxel conversion)
+	cv::patchNaNs(filtered1, 99);
+	cv::patchNaNs(filtered2, 99);
+
     /* ========================================== *\
      * 		2. Voxel grid
     \* ========================================== */
@@ -147,31 +151,20 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
      * 		4. Octree integration
     \* ========================================== */
 
-  //get grid range
-  for(int i=0; i<3; i++){
-    max_v[i] = (grid.units).at(GRID_SIZE-1);
-    min_v[i] = (grid.units).at(0);
-  }
+	//get grid range
+	for(int i=0; i<3; i++){
+		max_v[i] = (grid.units).at(GRID_SIZE-1);
+		min_v[i] = (grid.units).at(0);
+	}
 
-  //initialize tstree
-  if(isfirst){
-    tstree.setGridRange(max_v[0]-min_v[0], max_v, min_v;
-  }
+	//initialize tstree
+	if(isfirst){
+		tstree.setGridRange(max_v[0]-min_v[0], max_v, min_v;
+	}
 
-  //reset nan as 1
-  for(int i=0; i<GRID_SIZE; i++){
-    for(int j=0; j<GRID_SIZE; j++){
-      for(int k=0; k<GRID_SIZE; k++){
-        if(isnan(FusedVoxels.at<float>(i,j,k))){
-        	FusedVoxels.at<float>(i,j,k) = 1;
-        }
-      }
-    }
-  }
+	tstree.insert(FusedVoxels, 0);
 
-  tstree.insert(FilledVoxels, 0);
-
-  //grid_values = tstree.read(0);
+	//grid_values = tstree.read(0);
 
 
 }
@@ -227,12 +220,6 @@ int main(int argc, char** argv)
 
 	// start threads
     boost::thread_group threads;
-
-    void find_the_question(int the_answer);
-
-    //boost::thread t1(ros_loop, 30, 5);
-    //boost::thread t2(interface_loop);
-
     boost::thread *t1 = new boost::thread(ros_loop, 30, 5);
     boost::thread *t2 = new boost::thread(interface_loop);
     threads.add_thread(t1);
@@ -274,6 +261,11 @@ void getCameraPose(cv::Mat R, cv::Mat tVec)
 	tVec.at<float>(1) = 0;
 	tVec.at<float>(2) = -5;
 }
+
+
+/* ========================================== *\
+ * 		UI
+\* ========================================== */
 
 void print_instructions(){
 
