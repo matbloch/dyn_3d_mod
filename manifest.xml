@@ -16,7 +16,6 @@
   <depend package="pcl_conversions"/>
   <depend package="pcl_ros"/>
   <depend package="rosbag"/>
-  <depend package="common_rosdeps" />
   <rosdep name="eigen" />
 </package>
 
