@@ -36,7 +36,6 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #rosbuild_add_executable(tree src/tree_tests.cpp)
 #rosbuild_add_executable(stream src/stream_depth.cpp)
 
-
 # add boost libraries
 #rosbuild_add_boost_directories()
 
@@ -44,9 +43,11 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 find_package( PCL 1.2 REQUIRED segmentation filters visualization )
 
 # eigen lib
+find_package(cmake_modules REQUIRED)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 find_package(Eigen REQUIRED)
 include_directories(${Eigen_INCLUDE_DIRS})
+
 
 
 ### add header files
