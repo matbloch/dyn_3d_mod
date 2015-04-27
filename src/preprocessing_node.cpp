@@ -46,14 +46,11 @@ voxelGrid grid1;
 voxelGrid grid2;
 
 // globals
-ros::Publisher pub_;
 cv::Mat intrinsicMat(3, 3, CV_32F); // intrinsic matrix
 cv::Mat R1(3, 3, CV_32F);    // Rotation vector
 cv::Mat tVec1(3, 1, CV_32F); // Translation vector in camera frame
 cv::Mat R2(3, 3, CV_32F);    // Rotation vector
 cv::Mat tVec2(3, 1, CV_32F); // Translation vector in camera frame
-int gridsize;   // Must be 2^x
-float spacing_in_m;
 cv::Mat FilledVoxels1;
 cv::Mat FilledVoxels2;
 cv::Mat FusedVoxels;
@@ -73,15 +70,15 @@ static float spacing_in_m = 0.02;
 float max_v[3] = {(float)(GRID_SIZE-1), (float)(GRID_SIZE-1), (float)(GRID_SIZE-1)};
 float min_v[3] = {0, 0, 0};
 
-TStree::TStree tstree(max_v[0]-min_v[0], max_v, min_v, MAX_DIM);
+//TStree::TStree tstree(max_v[0]-min_v[0], max_v, min_v, MAX_DIM);
 
 void getCameraParameters(cv::Mat intrinsicMat);
 void getCameraPose(cv::Mat R, cv::Mat tVec);
 void print_instructions();
 
-void ros_loop(unsigned int,unsigned int);	    // includes the ros spinner
-void interface_loop();  // checks for keyboard inputs
-void start_stop_recording();
+void ros_thread(unsigned int,unsigned int);	    // includes the ros spinner
+void interface_thread();  // user interface
+
 
 void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor_msgs::ImageConstPtr& msg2)
 {
@@ -146,25 +143,10 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
 
 	FusedVoxels = 0.5*(FilledVoxels1 + FilledVoxels2);
 
-
     /* ========================================== *\
      * 		4. Octree integration
     \* ========================================== */
 
-	//get grid range
-	for(int i=0; i<3; i++){
-		max_v[i] = (grid.units).at(GRID_SIZE-1);
-		min_v[i] = (grid.units).at(0);
-	}
-
-	//initialize tstree
-	if(isfirst){
-		tstree.setGridRange(max_v[0]-min_v[0], max_v, min_v;
-	}
-
-	tstree.insert(FusedVoxels, 0);
-
-	//grid_values = tstree.read(0);
 
 
 }
@@ -172,16 +154,9 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
 
 int main(int argc, char** argv)
 {
-	/*
-	 * INPUT: camera streams (sensor image msg)
-	 * OUTPUT: synced, aligned voxel structure (CV::Mat)
-	 *
-	 */
 
 	ros::init(argc, argv, "dyn_3d_photo");
 	ros::NodeHandle nh_;
-
-
 
 	// define subscribers
 	message_filters::Subscriber<sensor_msgs::Image> depth_sub_1(nh_, "/camera1/depth/image_raw", 1);
@@ -197,20 +172,17 @@ int main(int argc, char** argv)
 	// add callback
 	sync.registerCallback(boost::bind(&preprocessing_callback, _1, _2));
 
-	// register publisher for the merged clouds
-	pub_ = nh_.advertise<sensor_msgs::Image>(ros::this_node::getName() + "/preprocessed_data", 1);
-
 	// Set up the voxel grid objects for both cameras
 	getCameraParameters(intrinsicMat);
 	getCameraPose(R1,tVec1);
 	getCameraPose(R2,tVec2);
-	gridsize = 64;   // Must be 2^x
+	GRID_SIZE = 64;   // Must be 2^x
 	spacing_in_m = 0.05;
-	grid1.setParameters(gridsize, spacing_in_m, intrinsicMat, R1, tVec1);
-	grid2.setParameters(gridsize, spacing_in_m, intrinsicMat, R2, tVec2);
+	grid1.setParameters(GRID_SIZE, spacing_in_m, intrinsicMat, R1, tVec1);
+	grid2.setParameters(GRID_SIZE, spacing_in_m, intrinsicMat, R2, tVec2);
 
 	// Setup voxel structure to load the TSDF in
-	int sz[3] = {gridsize,gridsize,gridsize};
+	int sz[3] = {GRID_SIZE,GRID_SIZE,GRID_SIZE};
 	FilledVoxels1 = Mat(3,sz, CV_32FC1, Scalar::all(0));
 	FilledVoxels2 = Mat(3,sz, CV_32FC1, Scalar::all(0));
 	FusedVoxels = Mat(3,sz, CV_32FC1, Scalar::all(0));
@@ -220,8 +192,8 @@ int main(int argc, char** argv)
 
 	// start threads
     boost::thread_group threads;
-    boost::thread *t1 = new boost::thread(ros_loop, 30, 5);
-    boost::thread *t2 = new boost::thread(interface_loop);
+    boost::thread *t1 = new boost::thread(ros_thread, 30, 5);	// @ 30 Hz and 5 sec connection timeout
+    boost::thread *t2 = new boost::thread(interface_thread);
     threads.add_thread(t1);
     threads.add_thread(t2);
 
@@ -279,7 +251,7 @@ void print_instructions(){
 
 }
 
-void ros_loop(unsigned int rate = 30, unsigned int  t = 5){
+void ros_thread(unsigned int rate = 30, unsigned int  t = 5){
 
 
 	std::cout <<  "--- ros loop" << std::endl;
@@ -307,31 +279,45 @@ void ros_loop(unsigned int rate = 30, unsigned int  t = 5){
 
 
 }
-void interface_loop(){
+void interface_thread(){
 
 	char k;
 
 	// wait till camera is connected
-
 	while(!camera_is_connected){
-
-		if(camera_timed_out){
-			return;
-		}
-
+		if(camera_timed_out){return;}
 		usleep(300);
 	}
 
-	// start/stop recording
 	std::cout << GREEN << "--- Camera connection established. Ready to record." << RESET << endl;
 
+	// 1. RECORDING
 	while(!recording_finished){
 
-		start_stop_recording();
+		// start > stop recording on [space]
+		do{
+			while(true){
+				k = getch();
+
+				if(k == ' '){
+					if(recording){
+						recording = false;
+						std::cout << GREEN << "--- End recording..." << RESET << endl;
+						// TODO: wait till buffer is processed
+						break;
+					}else{
+						recording = true;
+						std::cout << GREEN << "--- Start recording..." << RESET << endl;
+						break;
+					}
+				}
+			}
+
+		}while(recording);
 
 		std::cout<<"\n";
 		std::cout << "=================================" << std::endl;
-		std::cout << " HOW WOULD YOU LIKE TO CONINUE?:" << std::endl;
+		std::cout << " HOW WOULD YOU LIKE TO CONINUE?" << std::endl;
 		std::cout << "---------------------------------" << std::endl;
 		std::cout << " [v]: visualize recorded scene" << std::endl;
 		std::cout << " [r]: record new scene" << std::endl;
@@ -339,50 +325,42 @@ void interface_loop(){
 		std::cout << "=================================" << std::endl;
 		std::cout<<"\n";
 
-		while(true){
+		k = ' ';
+
+		while(k != 'r' && k != 'v'){	// loop until valid selection
 			k = getch();
 
 			if(k == 'r'){
-				// RESET THE OCTREE STRUCTURE HERE
-				break;
+				// TODO: RESET THE OCTREE STRUCTURE AND BUFFER HERE
+
+				std::cout << "--- Ready to record new scene." << RESET << endl;
 			}else if(k == 'v'){
+				// leave outer loop and continue
 				recording = false;
 				recording_finished = true;	// stops the ROS spinner
-				break;
-			}else if(k == 'q'){
 
+			}else if(k == 'q'){
+				// leave outer loop and end interface loop
 				recording_finished = true;	// stops the ROS spinner
-				break;
+				return;
 			}else{
-				std::cout << "Please select a valid option" << std::endl;
+				std::cout << RED << "Please select a valid option" << RESET << std::endl;
 			}
 		}
 	}
 
+	// 1. VISUALIZATION
+	int frame_nr;
+	std::cout<<"\n";
+	std::cout << "=================================" << std::endl;
+	std::cout << "VISUALIZATION" << std::endl;
+	std::cout << "---------------------------------" << std::endl;
+	std::cout << "Specify the frame you want to visualize: ";
+	std::cin >> frame_nr;
+
+
+
+
 	return;
 
 }
-
-void start_stop_recording(){
-	char k;
-	do{
-		while(true){
-			k = getch();
-
-			if(k == ' '){
-				if(recording){
-					recording = false;
-					std::cout << GREEN << "--- End recording..." << RESET << endl;
-					break;
-				}else{
-					recording = true;
-					std::cout << GREEN << "--- Start recording..." << RESET << endl;
-					break;
-				}
-			}
-		}
-
-	}while(recording);
-}
-
-
