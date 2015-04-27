@@ -335,6 +335,7 @@ void interface_loop(){
 		std::cout << "---------------------------------" << std::endl;
 		std::cout << " [v]: visualize recorded scene" << std::endl;
 		std::cout << " [r]: record new scene" << std::endl;
+		std::cout << " [q]: quit" << std::endl;
 		std::cout << "=================================" << std::endl;
 		std::cout<<"\n";
 
@@ -346,6 +347,10 @@ void interface_loop(){
 				break;
 			}else if(k == 'v'){
 				recording = false;
+				recording_finished = true;	// stops the ROS spinner
+				break;
+			}else if(k == 'q'){
+
 				recording_finished = true;	// stops the ROS spinner
 				break;
 			}else{
