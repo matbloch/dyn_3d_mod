@@ -38,6 +38,13 @@ static float spacing_in_m = 0.02;
 float max_v[3] = {(float)(GRID_SIZE-1), (float)(GRID_SIZE-1), (float)(GRID_SIZE-1)};
 float min_v[3] = {0, 0, 0};
 
+TStree tstree((GRID_SIZE-1)*spacing_in_m, MAX_DIM);
+
+//struct timeval tv;
+//struct timezone tz;
+double ibefore, iafter;
+
+
 // Functions
 void TW_CALL ResetGridCB(void *clientData);
 void createGrid();
@@ -187,6 +194,55 @@ void getLines()
 
 bool callback_key_down(igl::Viewer& viewer, unsigned char key, int modifiers)
 {
+  if (key == '0')
+  {
+    voxelGrid grid;
+
+    // Define intrinsic camera parameters
+    cv::Mat intrinsicMat(3, 3, CV_32F); // intrinsic matrix
+    getCameraParameters(intrinsicMat);
+
+    // Define Camera orientation and position
+    cv::Mat R(3, 3, CV_32F);
+    cv::Mat tVec(3, 1, CV_32F); // Translation vector in camera frame
+    getCameraPose(R,tVec);
+
+    // Set Voxel parameters
+    int sz[3] = {GRID_SIZE,GRID_SIZE,GRID_SIZE};
+    grid.setParameters(GRID_SIZE, spacing_in_m, intrinsicMat, R, tVec);
+
+    int num = 5;
+    for(int time=0; time<num; time++){
+      cv::Mat kinectimage(480, 640, CV_32F, Scalar(5.1-time/50.0));
+      Mat FilledVoxels(3,sz, CV_32FC1, Scalar::all(0));
+
+      grid.fillVoxels(kinectimage, FilledVoxels);
+
+
+
+      for(int i=0; i<GRID_SIZE; i++){
+        for(int j=0; j<GRID_SIZE; j++){
+          for(int k=0; k<GRID_SIZE; k++){
+            if(isnan(FilledVoxels.at<float>(i,j,k))){
+              FilledVoxels.at<float>(i,j,k) = 1;
+              //cout << "nan ";
+            }
+          }
+        }
+      }
+
+      for(int i=0; i<3; i++){
+        max_v[i] = (grid.units).at(GRID_SIZE-1);
+        min_v[i] = (grid.units).at(0);
+      }
+
+      tstree.insert(FilledVoxels, time);
+    }
+
+    cout << "insert finish" << endl;
+    //tstree.print_timespacetree();
+
+  }
   if (key == '1')
   {
     //show imported points
@@ -256,6 +312,17 @@ bool callback_key_down(igl::Viewer& viewer, unsigned char key, int modifiers)
     viewer.core.show_faces = true;
     viewer.data.set_normals(FN);
   }
+  if (key == '4'){
+    grid_values = tstree.read(0);
+    createGrid();
+    callback_key_down(viewer, '3', 0);
+    cout << "read finish" << endl;
+  }
+  if (key == '5'){
+    tstree.update(&grid_values);
+    callback_key_down(viewer, '3', 0);
+    cout << "update finish" << endl;
+  }
 
   return true;
 }
@@ -264,96 +331,9 @@ int main(int, char **)
 {
   //voxel width
 
-  /*
-  float*** p;
-  p = (float ***)malloc(sizeof(float **) * GRID_SIZE);
-  for (int i=0;i<GRID_SIZE;i++) {
-    p[i] = (float **)malloc(sizeof(float *) * GRID_SIZE);
-    for (int j=0;j<GRID_SIZE;j++) {
-      p[i][j] = (float *)malloc(sizeof(float) * GRID_SIZE);
-    }
-  }
-
-  float*** q;
-  q = (float ***)malloc(sizeof(float **) * GRID_SIZE);
-  for (int i=0;i<GRID_SIZE;i++) {
-    q[i] = (float **)malloc(sizeof(float *) * GRID_SIZE);
-    for (int j=0;j<GRID_SIZE;j++) {
-      q[i][j] = (float *)malloc(sizeof(float) * GRID_SIZE);
-    }
-  }
-  for(int x=0; x<GRID_SIZE; x++){
-    for(int y=0; y<GRID_SIZE; y++){
-      for(int z=0; z<GRID_SIZE; z++){
-        p[x][y][z] = (float)(rand() % 3 - 1);
-        q[x][y][z] = -1.0;
-      }
-    }
-  }
-  */
-// Read the kinect image
-	voxelGrid grid;
-
-  cv::Mat kinectimage(480, 640, CV_32F, Scalar(5));
-
-  // Define intrinsic camera parameters
-  cv::Mat intrinsicMat(3, 3, CV_32F); // intrinsic matrix
-  getCameraParameters(intrinsicMat);
-
-  // Define Camera orientation and position
-  cv::Mat R(3, 3, CV_32F);
-  cv::Mat tVec(3, 1, CV_32F); // Translation vector in camera frame
-  getCameraPose(R,tVec);
-
-  // Set Voxel parameters
-  //int gridsize = 256;   // Must be 2^x
-
-  int sz[3] = {GRID_SIZE,GRID_SIZE,GRID_SIZE};
-  Mat FilledVoxels(3,sz, CV_32FC1, Scalar::all(0));
-  grid.setParameters(GRID_SIZE, spacing_in_m, intrinsicMat, R, tVec);
-  //Clock in
-  float t = (float)getTickCount();
-  grid.fillVoxels(kinectimage, FilledVoxels);
-
-
-  for(int i=0; i<3; i++){
-    max_v[i] = (grid.units).at(GRID_SIZE-1);
-    min_v[i] = (grid.units).at(0);
-  }
-
-  TStree::TStree tstree(max_v[0]-min_v[0], max_v, min_v, MAX_DIM);
-
-
-  for(int i=0; i<GRID_SIZE; i++){
-    for(int j=0; j<GRID_SIZE; j++){
-      for(int k=0; k<GRID_SIZE; k++){
-        if(isnan(FilledVoxels.at<float>(i,j,k))){
-          FilledVoxels.at<float>(i,j,k) = 1;
-          //cout << "nan ";
-        }
-      }
-    }
-  }
-
-  cout << "insert" << endl;
-  tstree.insert(FilledVoxels, 0);
-  cout << "insert done" << endl;
-
-  //tstree.insert(q, 1);
-
-  //tstree.print_timespacetree();
-
-
-  cout << "read start" << endl;
-  grid_values = tstree.read(0);
-  cout << "read done" << endl;
-
   igl::Viewer viewer;
   viewer.callback_key_down = callback_key_down;
   viewer.callback_init = callback_init;
   callback_key_down(viewer, '1', 0);
-
   viewer.launch();
-
-  return 1;
 }
