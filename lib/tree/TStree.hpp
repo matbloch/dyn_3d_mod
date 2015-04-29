@@ -11,6 +11,15 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 
+// For Debug
+#define TIME_DEBUG
+#ifdef TIME_DEBUG
+#include <sys/time.h>
+struct timeval tv;
+struct timezone tz;
+double before, after;
+#endif
+
 using namespace std;
 
 #define EMP 100
@@ -18,8 +27,14 @@ using namespace std;
 class TStree{
 
   public:
-    //TStree(float _max_v[3], float _min_v[3], int _max_d){}
+    // Constructor
+    TStree(float _width, int _max_d) : MAX_DIM(_max_d), WIDTH(_width),  GRID_SIZE(pow(2,_max_d)), GRID_LENGTH(_width/(pow(2,_max_d)-1)){
 
+      init_tstree();
+      cur_time = -1;
+    }
+
+    /*
     TStree(float _width, float _max_v[3], float _min_v[3], int _max_d) : MAX_DIM(_max_d), WIDTH(_width),  GRID_SIZE(pow(2,_max_d)), GRID_LENGTH(_width/(pow(2,_max_d)-1)){
 
       init_tstree();
@@ -27,56 +42,96 @@ class TStree{
         MAX_V[i] = _max_v[i];
         MIN_V[i] = _min_v[i];
       }
-      //MAX_DIM = _max_d;
-      //WIDTH = _width;
-      //GRID_SIZE = pow(2,MAX_DIM);
+      cur_time = -1;
     }
+    */
+    // Set of signed_distance value and time
     class ValTime{
 
       public:
         ValTime(){}
-        ValTime(int _val, char _time){
+        ValTime(int _val, int _time){
           val = _val;
           time = _time;
         }
         float val;
-        char time;
+        int time;
         friend ostream& operator<<(ostream& os, const ValTime& it);
     };
+    // TimeTree Class
+    class TimeTree{
 
-    void insert(cv::Mat voxel_values, char time);
-    void insert(float*** p, char time);
-    Eigen::VectorXd read(char time);
+      public:
+        TimeTree(){
+          vector<ValTime> _ttree;
+          _ttree.clear();
+          ttree = _ttree;
+          it = _ttree.begin();
+        }
+        TimeTree(vector<ValTime> _ttree, vector<ValTime>::iterator _it){
+          ttree = _ttree;
+          it = _it;
+        
+        }
+        TimeTree(vector<ValTime> _ttree){
+          ttree = _ttree;
+          it = _ttree.begin();
+        
+        }
+        TimeTree(ValTime _valtime){
+          vector<ValTime> _ttree;
+          _ttree.clear();
+          _ttree.push_back(_valtime);
+          ttree = _ttree;
+          it = _ttree.begin();
+        
+        }
+        vector<ValTime> ttree;
+        vector<ValTime>::iterator it;
+        void clear(){
+          ttree.clear();
+        }
+    };
+
+    void insert(cv::Mat voxel_values, int time);
+    void insert(float*** p, int time);
+    Eigen::VectorXd read(int time);
+    void update(Eigen::VectorXd* signed_distance);
     void print_timespacetree();
 
   private:
-    tree<vector<ValTime> > tstree;
-    tree<vector<ValTime> >::sibling_iterator main_root;
+    tree<TimeTree > tstree;
+    tree<TimeTree >::sibling_iterator main_root;
     float MAX_V[3];
     float MIN_V[3];
     const int MAX_DIM;
     const float WIDTH;
     const int GRID_SIZE;
     const float GRID_LENGTH;
+    int cur_time;
+    const int start_time = 0;
+    int end_time = 0;
 
     void init_tstree();
     tree<float> init_tree(int max_d);
     void make_trees(tree<float>* tr, tree<float>::sibling_iterator current, float width, float c_x, float c_y, float c_z, float x, float y, float z, int d, int max_d, float t);
     tree<float> make_octree(float voxel_width, float max_x, float min_x, float max_y, float min_y, float max_z, float min_z, int max_d, float ***t);
     tree<float> make_octree2(int max_d, float*** p);
-    void merge_trees(tree<vector<ValTime> >* main_tr, tree<vector<ValTime> >::sibling_iterator main_cur,tree<float>* new_tr, tree<float>::sibling_iterator new_cur, int time);
+    void merge_trees(tree<TimeTree >* main_tr, tree<TimeTree>::sibling_iterator main_cur,tree<float>* new_tr, tree<float>::sibling_iterator new_cur, int time);
     void make_trees2(tree<float>* tr, tree<float>::sibling_iterator current, vector<int>* index, int max_d, float*** p);
     void insertToTree(tree<float>* tr, tree<float>::sibling_iterator current, vector<int> index, float*** p);
-    void read_tree(tree<vector<ValTime> >* tr, tree<vector<ValTime> >::sibling_iterator current, vector<int>* index, int t, float* p);
-    void read_tree(tree<vector<ValTime> >* tr, tree<vector<ValTime> >::sibling_iterator current, vector<int>* index, int t, Eigen::VectorXd* p);
+    void read_tree(tree<TimeTree >* tr, tree<TimeTree>::sibling_iterator current, vector<int>* index, int t, float* p);
+    void read_tree(tree<TimeTree >* tr, tree<TimeTree>::sibling_iterator current, vector<int>* index, int t, Eigen::VectorXd* p);
+    void read_tree(tree<TimeTree>* tr, tree<TimeTree>::sibling_iterator current, vector<int>* index, Eigen::VectorXd* p);
     bool all_same(tree<float> *tr, tree<float>::sibling_iterator current);
     bool all_same(tree<float> *tr, tree<float>::sibling_iterator current, int t);
-    bool has_value(tree<vector<ValTime> >::sibling_iterator main_cur);
+    bool has_value(tree<TimeTree >::sibling_iterator main_cur);
     bool has_value(tree<float>::sibling_iterator current);
-    void insertToVoxelPos(vector<int> index, int val, float* p);
-    void insertToVoxelPos(vector<int> index, int val, Eigen::VectorXd* p);
-    void convertTreeIndextoVoxelPos(vector<ValTime> t_tr, vector<int> index, int t, float* p);
-    void convertTreeIndextoVoxelPos(vector<ValTime> t_tr, vector<int> index, int t, Eigen::VectorXd* p);
+    void insertToVoxelPos(vector<int>* index, int val, float* p);
+    void insertToVoxelPos(vector<int>* index, int val, Eigen::VectorXd* p);
+    void convertTreeIndextoVoxelPos(TimeTree* t_tr, vector<int>* index, int t, float* p);
+    void convertTreeIndextoVoxelPos(TimeTree* t_tr, vector<int>* index, int t, Eigen::VectorXd* p);
+    void convertTreeIndextoVoxelPos(TimeTree* t_tr, vector<int> *index, Eigen::VectorXd* p);
 };
 
 ostream& operator<<(ostream& os, const TStree::ValTime& it)
@@ -85,7 +140,22 @@ ostream& operator<<(ostream& os, const TStree::ValTime& it)
   return os;
 }
 
-void TStree::insert(cv::Mat voxel_values, char time){
+//---------------------------------------
+// public methods
+//---------------------------------------
+
+/*
+ * Insert signed distance values to time space tree
+ * 
+ * cv::Mat voxel_values: signed distance array
+ * int time: time ste;
+ */
+void TStree::insert(cv::Mat voxel_values, int time){
+
+#ifdef TIME_DEBUG
+  gettimeofday(&tv, &tz);
+  before = (double)tv.tv_sec + (double)tv.tv_usec * 1.0e-6;
+#endif
 
   float*** p;
   p = (float ***)malloc(sizeof(float **) * GRID_SIZE);
@@ -103,55 +173,133 @@ void TStree::insert(cv::Mat voxel_values, char time){
       }
     }
   }
+#ifdef TIME_DEBUG
+  gettimeofday(&tv, &tz);
+  after = (double)tv.tv_sec + (double)tv.tv_usec * 1.0e-6;
+  cout << "converting_mat_to_array: "<< before-after << "s" <<endl;
+#endif
 
-  //main_root = tstree.begin();
-  ///tree<float> tr = make_octree(WIDTH, MAX_V[0], MIN_V[0], MAX_V[1], MIN_V[1], MAX_V[2], MIN_V[2], MAX_DIM, p);
+#ifdef TIME_DEBUG
+  gettimeofday(&tv, &tz);
+  before = (double)tv.tv_sec + (double)tv.tv_usec * 1.0e-6;
+#endif
   tree<float> tr = make_octree2(MAX_DIM, p);
+#ifdef TIME_DEBUG
+  gettimeofday(&tv, &tz);
+  after = (double)tv.tv_sec + (double)tv.tv_usec * 1.0e-6;
+  cout << "make_octree: "<< before-after << "s" <<endl;
+#endif
+
   tree<float>::sibling_iterator root;
   root = tr.begin();
-  kptree::print_tree_bracketed(tr, std::cout);
-  cout << "merge" << endl;
+#ifdef TIME_DEBUG
+  gettimeofday(&tv, &tz);
+  before = (double)tv.tv_sec + (double)tv.tv_usec * 1.0e-6;
+#endif
   merge_trees(&tstree, main_root, &tr, root, time);
+#ifdef TIME_DEBUG
+  gettimeofday(&tv, &tz);
+  after = (double)tv.tv_sec + (double)tv.tv_usec * 1.0e-6;
+  cout << "merge_octree: "<< before-after << "s" <<endl;
+#endif
+  if(time > end_time){
+    end_time = time;
+  }
 }
 
-void TStree::insert(float*** p, char time){
+/*
+ * Insert signed distance values to time space tree
+ * 
+ * float*** p: signed distance array
+ * int time: time ste;
+ */
+void TStree::insert(float*** p, int time){
 
-  //main_root = tstree.begin();
   tree<float> tr = make_octree(WIDTH, MAX_V[0], MIN_V[0], MAX_V[1], MIN_V[1], MAX_V[2], MIN_V[2], MAX_DIM, p);
   tree<float>::sibling_iterator root;
   root = tr.begin();
   merge_trees(&tstree, main_root, &tr, root, time);
 }
 
-Eigen::VectorXd TStree::read(char time){
+/*
+ * Read signed distance values at specific time frame
+ * 
+ * Return: signed distance values
+ * int time: time frame
+ */
+Eigen::VectorXd TStree::read(int time){
 
-  tree<vector<ValTime> >::sibling_iterator head = tstree.begin();
+  Eigen::VectorXd signed_distance((int)pow(2,MAX_DIM*3));
+  if(time < start_time || end_time < time){
+    cout << "selected time is out of record !!" << endl;
+    return signed_distance;
+  }
+  tree<TimeTree>::sibling_iterator head = tstree.begin();
   vector<int> index;
   index.clear();
-  //int signed_distance[(int)pow(2,MAX_DIM*3)];
-  Eigen::VectorXd signed_distance((int)pow(2,MAX_DIM*3));
+#ifdef TIME_DEBUG
+  gettimeofday(&tv, &tz);
+  before = (double)tv.tv_sec + (double)tv.tv_usec * 1.0e-6;
+#endif
   read_tree(&tstree, head, &index, time, &signed_distance);
+#ifdef TIME_DEBUG
+  gettimeofday(&tv, &tz);
+  after = (double)tv.tv_sec + (double)tv.tv_usec * 1.0e-6;
+  cout << "read_octree: "<< before-after << "s" <<endl;
+#endif
+  cur_time = time;
 
   return signed_distance;
 }
 
+/*
+ * Read signed distance values at next time frame
+ * 
+ * Eigen::VectorXd* signed_distance: signed distance values
+ */
+void TStree::update(Eigen::VectorXd* signed_distance){
+
+  if(cur_time++ == end_time){
+    cout << "reached to end" << endl;
+    cur_time--;
+    return;
+  }
+
+  tree<TimeTree>::sibling_iterator head = tstree.begin();
+  vector<int> index;
+  index.clear();
+#ifdef TIME_DEBUG
+  gettimeofday(&tv, &tz);
+  before = (double)tv.tv_sec + (double)tv.tv_usec * 1.0e-6;
+#endif
+  read_tree(&tstree, head, &index, signed_distance);
+#ifdef TIME_DEBUG
+  gettimeofday(&tv, &tz);
+  after = (double)tv.tv_sec + (double)tv.tv_usec * 1.0e-6;
+  cout << "read_octree: "<< before-after << "s" <<endl;
+#endif
+}
 
 /*
  * Print all the leaf nodes of time-space tree
  *
- * tree<vector<ValTime> > tr: time-space tree
+ * tree<TimeTree > tr: time-space tree
  */
 void TStree::print_timespacetree(){
 
-  tree<vector<ValTime> >::leaf_iterator leaf_it;
+  tree<TimeTree>::leaf_iterator leaf_it;
   int node_num = 0;
   for(leaf_it = tstree.begin_leaf(); leaf_it != tstree.end_leaf(); leaf_it++){
-    for(int i=0; i<(*leaf_it).size(); i++){
-      cout << "(" << node_num << ","  << i << ") " << (*leaf_it)[i].val << "," << (*leaf_it)[i].time << endl;
+    for(int i=0; i<((*leaf_it).ttree).size(); i++){
+      cout << "(" << node_num << ","  << i << ") " << (((*leaf_it).ttree)[i]).val << "," << (((*leaf_it).ttree)[i]).time << endl;
     }
     node_num++;
   }
 }
+
+//---------------------------------------
+// private methods
+//---------------------------------------
 
 /*
  * Initialize time-space tree
@@ -159,9 +307,12 @@ void TStree::print_timespacetree(){
  */
 void TStree::init_tstree(){
 
-  vector<ValTime> initvec;
-  ValTime* initit = new ValTime(EMP, EMP);
-  initvec.push_back(*initit);
+  vector<ValTime> initvaltime;
+  ValTime* initvt = new ValTime(EMP, EMP);
+  initvaltime.push_back(*initvt);
+
+  TimeTree initvec(initvaltime);
+
   main_root = tstree.begin();
   main_root = tstree.insert(main_root, initvec); 
 }
@@ -173,6 +324,7 @@ void TStree::init_tstree(){
  * tree<float>::sibling_iterator current: node of the octree
  * int t: signed distance value
  */
+
 bool TStree::all_same(tree<float>* tr, tree<float>::sibling_iterator current, int t){
 
   bool ans = true;
@@ -228,7 +380,6 @@ bool TStree::all_same(tree<float> *tr, tree<float>::sibling_iterator current){
  */
 void TStree::make_trees(tree<float>* tr, tree<float>::sibling_iterator current, float width, float c_x, float c_y, float c_z, float x, float y, float z, int d, int max_d, float t){
 
-  cout << "make_trees" << endl;
   if(d < max_d){
     tree<float>::sibling_iterator next;
     next = (*tr).begin(current);
@@ -290,7 +441,6 @@ void TStree::make_trees(tree<float>* tr, tree<float>::sibling_iterator current, 
 }
 
 tree<float> TStree::make_octree(float voxel_width, float max_x, float min_x, float max_y, float min_y, float max_z, float min_z, int max_d, float*** t){
-  cout << "make_octree" << endl;
 
   tree<float> tr = init_tree(max_d);
   tree<float>::sibling_iterator root;
@@ -308,15 +458,36 @@ tree<float> TStree::make_octree(float voxel_width, float max_x, float min_x, flo
 
 tree<float> TStree::make_octree2(int max_d, float*** p){
 
-  cout << "make_octree2" << endl;
-  cout << "init_tree" << endl;
+#ifdef TIME_DEBUG
+  gettimeofday(&tv, &tz);
+  before = (double)tv.tv_sec + (double)tv.tv_usec * 1.0e-6;
+#endif
+
   tree<float> tr = init_tree(max_d);
+
+#ifdef TIME_DEBUG
+  gettimeofday(&tv, &tz);
+  after = (double)tv.tv_sec + (double)tv.tv_usec * 1.0e-6;
+  cout << "make octree(init): "<< before-after << "s" <<endl;
+#endif
+
   tree<float>::sibling_iterator root;
   root = tr.begin();
   vector<int> index;
   index.clear();
-  cout << "make_tree2" << endl;
+#ifdef TIME_DEBUG
+  gettimeofday(&tv, &tz);
+  before = (double)tv.tv_sec + (double)tv.tv_usec * 1.0e-6;
+#endif
+
   make_trees2(&tr, root, &index, max_d, p); 
+
+#ifdef TIME_DEBUG
+  gettimeofday(&tv, &tz);
+  after = (double)tv.tv_sec + (double)tv.tv_usec * 1.0e-6;
+  cout <<  "make octree(insert): "<< before-after << "s" <<endl;
+#endif
+  //kptree::print_tree_bracketed(tr, std::cout);
   return tr;
 }
 /*
@@ -357,7 +528,6 @@ tree<float> TStree::init_tree(int max_d){
       ++head;
     }
   }
-  //kptree::print_tree_bracketed(tr, std::cout);
   return tr;
 }
 
@@ -380,7 +550,6 @@ void TStree::make_trees2(tree<float>* tr, tree<float>::sibling_iterator current,
           (*index).pop_back();
           make_trees2(tr, parent, index, --max_d, p);
           (*index).push_back(tmp);
-          //(*tr).erase_children(parent);
         }
       }
     }
@@ -394,7 +563,6 @@ void TStree::make_trees2(tree<float>* tr, tree<float>::sibling_iterator current,
           (*index).pop_back();
           make_trees2(tr, parent, index, --max_d, p);
           (*index).push_back(tmp);
-          //(*tr).erase_children(parent);
         }
         else{
           (*tr).erase_children(current);
@@ -404,29 +572,6 @@ void TStree::make_trees2(tree<float>* tr, tree<float>::sibling_iterator current,
         (*tr).erase_children(current);
       }
     }
-    /*
-    else if((*index).size() > MAX_DIM-1){
-      *current = *((*tr).begin(current));
-      if((*index)[max_d-1] == 7){
-        if(all_same((tr), current)){
-          tree<float>::sibling_iterator parent;
-          parent = (*tr).parent(current);
-          int tmp = (*index)[max_d-1];
-          (*index).pop_back();
-          make_trees2(tr, parent, index, --max_d, p);
-          (*index).push_back(tmp);
-          //(*tr).erase_children(parent);
-        }
-      }
-      else{
-        (*tr).erase_children(current);
-      }
-    }
-    else{
-      *current = *((*tr).begin(current));
-      (*tr).erase_children(current);
-    }
-    */
   }
   else{
     tree<float>::sibling_iterator child = (*tr).begin(current);
@@ -443,7 +588,7 @@ void TStree::make_trees2(tree<float>* tr, tree<float>::sibling_iterator current,
 /*
  * Convert tree index to voxel position 
  *
- * tree<vector<ValTime> >* t_tr: time tree
+ * tree<TimeTree >* t_tr: time tree
  * vector<int>* index: tree hierarchy index vector
  * int t: time frame
  * float *p: array of signed distances of the grid (return)
@@ -492,11 +637,11 @@ void TStree::insertToTree(tree<float>* tr, tree<float>::sibling_iterator current
 /*
  * Judge if the node of time-space has a value
  *
- * tree<vector<ValTime> >::sibling_iterator main_cur: node iterator of time-space tree
+ * tree<TimeTree >::sibling_iterator main_cur: node iterator of time-space tree
  */
 
-bool TStree::has_value(tree<vector<ValTime> >::sibling_iterator main_cur){
-  if((*main_cur).size() != 0){
+bool TStree::has_value(tree<TimeTree>::sibling_iterator main_cur){
+  if(!((main_cur->ttree).empty())){
     //cout << (*main_cur)[0];
     return true;
   }
@@ -507,7 +652,7 @@ bool TStree::has_value(tree<vector<ValTime> >::sibling_iterator main_cur){
 /*
  * Judge if the node of signed distance octree has a value
  *
- * tree<vector<ValTime> >::sibling_iterator current: node iterator of octree
+ * tree<TimeTree >::sibling_iterator current: node iterator of octree
  */
 
 bool TStree::has_value(tree<float>::sibling_iterator current){
@@ -520,32 +665,34 @@ bool TStree::has_value(tree<float>::sibling_iterator current){
 /*
  * Merge new signed distance octree to time-space tree
  *
- * tree<vector<ValTime> >* main_tr: existing time-space tree
- * tree<vector<ValTime> >::sibling_iterator main_cur: root iterator of time-space tree
+ * tree<TimeTree >* main_tr: existing time-space tree
+ * tree<TimeTree >::sibling_iterator main_cur: root iterator of time-space tree
  * tree<float>* new_tr: new signed distance octree
  * tree<float>::sibling_iterator root iterator of new octree
  * int time: time of new octree
  */
 
 
-void TStree::merge_trees(tree<vector<ValTime> >* main_tr, tree<vector<ValTime> >::sibling_iterator main_cur,tree<float>* new_tr, tree<float>::sibling_iterator new_cur, int time){
+void TStree::merge_trees(tree<TimeTree>* main_tr, tree<TimeTree>::sibling_iterator main_cur,tree<float>* new_tr, tree<float>::sibling_iterator new_cur, int time){
   if(has_value(new_cur)){
     if(has_value(main_cur)){
       ValTime* it = new ValTime(*new_cur, time);
       if(time == 0){
         (*main_cur).clear();
-        (*main_cur).push_back(*it);
+        TimeTree tt(*it);
+        (*main_cur) = tt;
       }
-      else if((*it).val != (*main_cur)[(*main_cur).size()-1].val){
-        (*main_cur).push_back(*it);
+      else if((*it).val != (main_cur->ttree)[(main_cur->ttree).size()-1].val){
+        (main_cur->ttree).push_back(*it);
       }
+      /*
       else{
         //cout << (*it).val << "," << (*main_cur)[(*main_cur).size()-1].val << endl;
       }
-
+      */
     }
     else{
-      tree<vector<ValTime> >::sibling_iterator child_main = (*main_tr).begin(main_cur);
+      tree<TimeTree>::sibling_iterator child_main = (*main_tr).begin(main_cur);
       do{
         merge_trees(main_tr, child_main, new_tr, new_cur, time);
       } while(++child_main != (*main_tr).end(main_cur));
@@ -556,10 +703,10 @@ void TStree::merge_trees(tree<vector<ValTime> >* main_tr, tree<vector<ValTime> >
       for(int i=0; i<8; i++){
         (*main_tr).append_child(main_cur, *main_cur);
       }
-      (*main_cur).clear();
+      (main_cur->ttree).clear();
     }
     tree<float>::sibling_iterator child_new = (*new_tr).begin(new_cur);
-    tree<vector<ValTime> >::sibling_iterator child_main = (*main_tr).begin(main_cur);
+    tree<TimeTree>::sibling_iterator child_main = (*main_tr).begin(main_cur);
     do{
       merge_trees(main_tr, child_main, new_tr, child_new, time);
     } while((*main_tr).end(main_cur) != ++child_main && (*new_tr).end(new_cur) != ++child_new);
@@ -574,7 +721,7 @@ void TStree::merge_trees(tree<vector<ValTime> >* main_tr, tree<vector<ValTime> >
  * float *p: array of signed distances of the grid (return)
  */
 
-void TStree::insertToVoxelPos(vector<int> index, int val, float* p){
+void TStree::insertToVoxelPos(vector<int>* index, int val, float* p){
   int num = 0;
   /*
      for(int i=0; i<index.size(); i++){
@@ -584,8 +731,8 @@ void TStree::insertToVoxelPos(vector<int> index, int val, float* p){
      p[num+i] = val;
      }
      */
-  for(int i=0; i<index.size(); i++){
-    switch(index[i]){
+  for(int i=0; i<(*index).size(); i++){
+    switch((*index)[i]){
       case 0:
         break;
       case 1:
@@ -611,15 +758,15 @@ void TStree::insertToVoxelPos(vector<int> index, int val, float* p){
         break;
     }
   }
-  for (unsigned int x=0; x<pow(2,(MAX_DIM-index.size())); ++x)
-    for (unsigned int y=0; y<pow(2,(MAX_DIM-index.size())); ++y)
-      for (unsigned int z=0; z<pow(2,(MAX_DIM-index.size())); ++z)
+  for (unsigned int x=0; x<pow(2,(MAX_DIM-(*index).size())); ++x)
+    for (unsigned int y=0; y<pow(2,(MAX_DIM-(*index).size())); ++y)
+      for (unsigned int z=0; z<pow(2,(MAX_DIM-(*index).size())); ++z)
       {
         p[(int)(num + pow(2, MAX_DIM*0) * x + pow(2, MAX_DIM*1) * y + pow(2, MAX_DIM*2) * z)] = val;
       }
 }
 
-void TStree::insertToVoxelPos(vector<int> index, int val, Eigen::VectorXd* p){
+void TStree::insertToVoxelPos(vector<int>* index, int val, Eigen::VectorXd* p){
   int num = 0;
   /*
      for(int i=0; i<index.size(); i++){
@@ -629,8 +776,8 @@ void TStree::insertToVoxelPos(vector<int> index, int val, Eigen::VectorXd* p){
      p[num+i] = val;
      }
      */
-  for(int i=0; i<index.size(); i++){
-    switch(index[i]){
+  for(int i=0; i<(*index).size(); i++){
+    switch((*index)[i]){
       case 0:
         break;
       case 1:
@@ -656,9 +803,9 @@ void TStree::insertToVoxelPos(vector<int> index, int val, Eigen::VectorXd* p){
         break;
     }
   }
-  for (unsigned int x=0; x<pow(2,(MAX_DIM-index.size())); ++x)
-    for (unsigned int y=0; y<pow(2,(MAX_DIM-index.size())); ++y)
-      for (unsigned int z=0; z<pow(2,(MAX_DIM-index.size())); ++z)
+  for (unsigned int x=0; x<pow(2,(MAX_DIM-(*index).size())); ++x)
+    for (unsigned int y=0; y<pow(2,(MAX_DIM-(*index).size())); ++y)
+      for (unsigned int z=0; z<pow(2,(MAX_DIM-(*index).size())); ++z)
       {
         (*p)[(int)(num + pow(2, MAX_DIM*0) * x + pow(2, MAX_DIM*1) * y + pow(2, MAX_DIM*2) * z)] = val;
       }
@@ -668,51 +815,68 @@ void TStree::insertToVoxelPos(vector<int> index, int val, Eigen::VectorXd* p){
 /*
  * Convert tree index to voxel position 
  *
- * tree<vector<ValTime> >* t_tr: time tree
+ * tree<TimeTree >* t_tr: time tree
  * vector<int>* index: tree hierarchy index vector
  * int t: time frame
  * float *p: array of signed distances of the grid (return)
  */
 
-void TStree::convertTreeIndextoVoxelPos(vector<ValTime> t_tr, vector<int> index, int t, float* p){
-  for(int i=0; i<t_tr.size(); i++){
-    int tmptime = t_tr[i].time;
-    if(tmptime > t){
-      insertToVoxelPos(index, t_tr[i-1].val, p);
+void TStree::convertTreeIndextoVoxelPos(TimeTree* t_tr, vector<int> *index, int t, float* p){
+  for(t_tr->it = (t_tr->ttree).begin(); t_tr->it!=(t_tr->ttree).end(); (t_tr->it)++){
+    if((*(t_tr->it)).time > t){
+      insertToVoxelPos(index, (*(--(t_tr->it))).val, p);
+      break;
     }
-    else if(i == t_tr.size()-1){
-      insertToVoxelPos(index, t_tr[i].val, p);
+    else if((*(t_tr->it)).time == t){
+      insertToVoxelPos(index, (*(t_tr->it)).val, p);
+      break;
     }
   }
 }
 
-void TStree::convertTreeIndextoVoxelPos(vector<ValTime> t_tr, vector<int> index, int t, Eigen::VectorXd* p){
-  for(int i=0; i<t_tr.size(); i++){
-    int tmptime = t_tr[i].time;
-    if(tmptime > t){
-      insertToVoxelPos(index, t_tr[i-1].val, p);
+void TStree::convertTreeIndextoVoxelPos(TimeTree* t_tr, vector<int> *index, int t, Eigen::VectorXd* p){
+  for(t_tr->it = (t_tr->ttree).begin(); t_tr->it!=(t_tr->ttree).end(); (t_tr->it)++){
+    if((*(t_tr->it)).time > t){
+      insertToVoxelPos(index, (*(--(t_tr->it))).val, p);
+      break;
     }
-    else if(i == t_tr.size()-1){
-      insertToVoxelPos(index, t_tr[i].val, p);
+    else if((*(t_tr->it)).time == t){
+      insertToVoxelPos(index, (*(t_tr->it)).val, p);
+      break;
     }
   }
 }
+
+void TStree::convertTreeIndextoVoxelPos(TimeTree* t_tr, vector<int> *index, Eigen::VectorXd* p){
+
+  vector<ValTime>::iterator it = (*t_tr).it;
+  if(++((*t_tr).it)==((*t_tr).ttree).end()){
+    ((*t_tr).it)--;
+  }
+  else if((*((*t_tr).it)).time <= cur_time){
+    insertToVoxelPos(index, (*((*t_tr).it)).val, p);
+  }
+  else{
+    ((*t_tr).it)--;
+  }
+}
+
 /*
  * Read signed distances of the grid at certain time frame from time-space tree
  *
- * tree<vector<ValTime> >* tr: time-space tree
- * tree<vector<ValTime> >::sibling_iterator current: root iterator of the time-space tree
+ * tree<TimeTree >* tr: time-space tree
+ * tree<TimeTree >::sibling_iterator current: root iterator of the time-space tree
  * vector<int>* index: index vector (to be empty)
  * int t: time frame
  * float *p: array of signed distances of the grid (return)
  */
 
-void TStree::read_tree(tree<vector<ValTime> >* tr, tree<vector<ValTime> >::sibling_iterator current, vector<int>* index, int t, float* p){
+void TStree::read_tree(tree<TimeTree>* tr, tree<TimeTree>::sibling_iterator current, vector<int>* index, int t, float* p){
   if(has_value(current)){
-    convertTreeIndextoVoxelPos(*current, *index, t, p);
+    convertTreeIndextoVoxelPos(&(*current), index, t, p);
   }
   else{
-    tree<vector<ValTime> >::sibling_iterator child = (*tr).begin(current);
+    tree<TimeTree >::sibling_iterator child = (*tr).begin(current);
     int order = 0;
     do{
       (*index).push_back(order);
@@ -723,12 +887,12 @@ void TStree::read_tree(tree<vector<ValTime> >* tr, tree<vector<ValTime> >::sibli
   }
 }
 
-void TStree::read_tree(tree<vector<ValTime> >* tr, tree<vector<ValTime> >::sibling_iterator current, vector<int>* index, int t, Eigen::VectorXd* p){
+void TStree::read_tree(tree<TimeTree>* tr, tree<TimeTree>::sibling_iterator current, vector<int>* index, int t, Eigen::VectorXd* p){
   if(has_value(current)){
-    convertTreeIndextoVoxelPos(*current, *index, t, p);
+    convertTreeIndextoVoxelPos(&(*current), index, t, p);
   }
   else{
-    tree<vector<ValTime> >::sibling_iterator child = (*tr).begin(current);
+    tree<TimeTree >::sibling_iterator child = (*tr).begin(current);
     int order = 0;
     do{
       (*index).push_back(order);
@@ -739,5 +903,18 @@ void TStree::read_tree(tree<vector<ValTime> >* tr, tree<vector<ValTime> >::sibli
   }
 }
 
-
-
+void TStree::read_tree(tree<TimeTree>* tr, tree<TimeTree>::sibling_iterator current, vector<int>* index, Eigen::VectorXd* p){
+  if(has_value(current)){
+    convertTreeIndextoVoxelPos(&(*current), index, p);
+  }
+  else{
+    tree<TimeTree >::sibling_iterator child = (*tr).begin(current);
+    int order = 0;
+    do{
+      (*index).push_back(order);
+      read_tree(tr, child, index, p);
+      order++;
+      (*index).pop_back();
+    } while((*tr).end(current) != ++child);
+  }
+}
