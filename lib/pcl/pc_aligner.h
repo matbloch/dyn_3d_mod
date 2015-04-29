@@ -134,7 +134,7 @@ class PCAligner
 
 
 PCAligner::PCAligner () :
-	  cut_off_distance_ (100),
+	  cut_off_distance_ (15),
       leaf_size_ (0.2),
       normal_est_search_radius_ (1),
       shot_search_radius_ (0.8),
@@ -217,21 +217,33 @@ void PCAligner::filterClouds ()
 	pass.setInputCloud (cloud2_);
 	pass.filter (*filtered_estimation_cloud2_);
 
-
-	// 2: DOWNSAMPLING
+	// 1: DOWNSAMPLING
 	pcl::VoxelGrid<pcl::PointXYZ> filter;
 	filter.setLeafSize(leaf_size_,leaf_size_,leaf_size_);
 
 
 	// filter first cloud
-	filter.setInputCloud(cloud1_);
+	filter.setInputCloud(filtered_estimation_cloud1_);
 	filter.filter(*filtered_estimation_cloud1_);
 
 	// filter second cloud
-	filter.setInputCloud(cloud2_);
+	filter.setInputCloud(filtered_estimation_cloud2_);
 	filter.filter(*filtered_estimation_cloud2_);
 
-	std::cout << "--- downsampling complete" << std::endl;
+	std::cout << "--- downsampling and filtering complete." << std::endl;
+
+	// visualize sub result
+	pcl::visualization::PCLVisualizer viewer_ ("Filtered clouds");
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> source_cloud_color_handler (cloud1_, 0, 0, 255);
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> transformed_cloud_color_handler (cloud2_, 230, 20, 20);
+	viewer_.addPointCloud (filtered_estimation_cloud1_, source_cloud_color_handler, "Cloud1");
+	viewer_.addPointCloud (filtered_estimation_cloud2_, transformed_cloud_color_handler, "Cloud2");
+	viewer_.addCoordinateSystem (1.0);
+
+	while (!viewer_.wasStopped ()) { // Display the visualiser until 'q' key is pressed
+		viewer_.spinOnce ();
+	}
+
 
 }
 
@@ -259,15 +271,17 @@ void PCAligner::computeNormals(){
 	norm_est.compute (*normals2_);
 
 	// Visualize them.
+	/*
 	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer(new pcl::visualization::PCLVisualizer("Normals"));
 	viewer->addPointCloud<pcl::PointXYZ>(filtered_estimation_cloud1_, "cloud");
-	// Display one normal out of 20, as a line of length 3cm.
+	// Display one normal out of 4 with 20cm length
 	viewer->addPointCloudNormals<pcl::PointXYZ, pcl::Normal>(filtered_estimation_cloud1_, normals1_, 4, 0.2, "normals");
 	while (!viewer->wasStopped())
 	{
-	viewer->spinOnce(100);
-	boost::this_thread::sleep(boost::posix_time::microseconds(100000));
+		viewer->spinOnce(100);
+		boost::this_thread::sleep(boost::posix_time::microseconds(100000));
 	}
+	*/
 
 }
 
@@ -300,8 +314,8 @@ void PCAligner::detectSHOTFeatures ()
 	ransac_aligned_cloud1_ = PCXYZ::Ptr (new PCXYZ);
 	pcl::transformPointCloud (*cloud1_, *ransac_aligned_cloud1_, ransac_transformation_);
 
-
-	// visualize sub result
+	// visualize features
+	/*
 	pcl::visualization::PCLVisualizer viewer_ ("Features");
 	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> source_cloud_color_handler (cloud1_, 0, 0, 255);
 	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> transformed_cloud_color_handler (cloud2_, 230, 20, 20);
@@ -320,6 +334,7 @@ void PCAligner::detectSHOTFeatures ()
 	while (!viewer_.wasStopped ()) { // Display the visualiser until 'q' key is pressed
 		viewer_.spinOnce ();
 	}
+	*/
 
 }
 
@@ -424,6 +439,7 @@ int PCAligner::SampleConsensus(){
 	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> transformed_cloud_color_handler (cloud2_, 230, 20, 20);
 	viewer_.addPointCloud (ransac_aligned_cloud1_, transformed_cloud_color_handler, "RANSAC aligned cloud");
 
+	viewer_.addCoordinateSystem (1.0);
 
 	while (!viewer_.wasStopped ()) { // Display the visualiser until 'q' key is pressed
 		viewer_.spinOnce ();
@@ -483,13 +499,12 @@ int PCAligner::ICPRefinement(){
 	// visualize
 	pcl::visualization::PCLVisualizer viewer2_ ("END RESULT");
 
-
 	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> source_cloud_color_handler (cloud1_, 0, 0, 255);
 	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZ> transformed_cloud_color_handler (cloud2_, 230, 20, 20);
 
-
 	viewer2_.addPointCloud (cloud2_, source_cloud_color_handler, "original_cloud");
 	viewer2_.addPointCloud (icp_aligned_cloud1_, transformed_cloud_color_handler, "transformed_cloud");
+	viewer2_.addCoordinateSystem (1.0);
 
 	while (!viewer2_.wasStopped ()) {
 		viewer2_.spinOnce ();
