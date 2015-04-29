@@ -121,7 +121,7 @@ template<typename TYPE> bool ConfigHandler::getOptionMatrix(std::string opt_name
 void ConfigHandler::save()
 {
 
-	write_ini("config.ini", options );
+	write_ini("config/config.ini", options );
 
 }
 
@@ -182,7 +182,7 @@ void ConfigHandler::loadConfigFile(){
 
     try
     {
-    	read_ini("config.ini", options);
+    	read_ini("config/config.ini", options);
     }catch(boost::property_tree::ptree_error &e){
         cout << e.what() << endl;
     }

@@ -9,6 +9,9 @@ use '$ lsusb' to find bus number
 camera1: A00365805019051A
 camera2: A00365A05838051A
 
+custom intrinsics configuration file name:
+[rgb|depth]_[serial#]
+
 -->
 
 <launch>
@@ -16,5 +19,7 @@ camera2: A00365A05838051A
     <arg name="camera" value="camera2" />
     <arg name="device_id" value="A00365A05838051A" />
     <arg name="depth_registration" value="false" />
+    <arg name="rgb_camera_info_url" value="file:///$(find dyn_3d_mod)/config/rgb_A00365A05838051A.yaml" />
+    <arg name="depth_camera_info_url" value="file:///$(find dyn_3d_mod)/config/depth_A00365A05838051A.yaml" />
   </include>
 </launch>

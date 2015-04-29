@@ -253,10 +253,7 @@ void print_instructions(){
 
 void ros_thread(unsigned int rate = 30, unsigned int  t = 5){
 
-
-	std::cout <<  "--- ros loop" << std::endl;
-
-	ros::Rate r(rate); // 30 Hz
+	ros::Rate r(rate); // standard: 30 Hz
 
 	unsigned int timeout = t;  // connection timeout in seconds
 	time_t init_time = time(0);
