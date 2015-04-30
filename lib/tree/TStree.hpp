@@ -12,7 +12,7 @@
 #include <Eigen/Geometry>
 
 // For Debug
-#define TIME_DEBUG
+//#define TIME_DEBUG
 #ifdef TIME_DEBUG
 #include <sys/time.h>
 struct timeval tv;

@@ -39,6 +39,9 @@
 #include "misc/colio.h"
 #include "definitions.h"
 
+// time space tree library
+#include "tree/TStree.hpp"
+
 // object handlers
 ConfigHandler conf;
 ImageFilters filters;
@@ -64,13 +67,13 @@ std::atomic<bool> camera_timed_out(false);
 bool isfirst = true;
 
 // grid status
-static int MAX_DIM = 7;
+static int MAX_DIM = 5;
 static int GRID_SIZE = (int)pow(2,MAX_DIM);
 static float spacing_in_m = 0.02;
 float max_v[3] = {(float)(GRID_SIZE-1), (float)(GRID_SIZE-1), (float)(GRID_SIZE-1)};
 float min_v[3] = {0, 0, 0};
 
-//TStree::TStree tstree(max_v[0]-min_v[0], max_v, min_v, MAX_DIM);
+TStree::TStree tstree((GRID_SIZE-1)*spacing_in_m, MAX_DIM);
 
 void getCameraParameters(cv::Mat intrinsicMat);
 void getCameraPose(cv::Mat R, cv::Mat tVec);
@@ -147,6 +150,7 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
      * 		4. Octree integration
     \* ========================================== */
 
+  tstree.insert(FilledVoxels, time);
 
 
 }
