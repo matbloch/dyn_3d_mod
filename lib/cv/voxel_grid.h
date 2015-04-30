@@ -68,8 +68,8 @@ void voxelGrid::setParameters(int a_gridsize, float a_spacing_in_m, Mat a_intrin
 	tVec = a_tVec;
 
 	// TSDF parameters
-	d_margin = 0.01;
-	d_truncate = 0.05;
+	d_margin = spacing_in_m*3.0;
+	d_truncate = spacing_in_m*4.0;
 
 	// Calculate a vector for the voxel positions in space in [meters]
 	units = std::vector<float> (gridsize);
