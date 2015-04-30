@@ -141,7 +141,7 @@ void voxelGrid::fillVoxels(Mat image, Mat FilledVoxels)
 		    {
 		    	// If pixel is not in image return nan
 		    	if (isnan(Voxels.at<cv::Vec3f>(i,j,k)[0]) || isnan(Voxels.at<cv::Vec3f>(i,j,k)[1])){
-		    		FilledVoxels.at<float>(i,j,k) = NAN;
+		    		FilledVoxels.at<float>(i,j,k) = 1;
 		    	}
 
 		    	else{
@@ -172,7 +172,7 @@ float voxelGrid::TSDF(float d_in)
 
 	// All distances in m
 	if (d_in> d_truncate){
-		return NAN;
+		return 1;
 	}
 	else if (d_in<-d_margin){
 		return 1.0;
