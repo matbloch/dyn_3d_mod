@@ -125,12 +125,12 @@ void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor
 	filters.bilateral(cv_ptr1->image, filtered1);
 	filters.bilateral(cv_ptr2->image, filtered2);
 
-	filters.replaceValue(filtered1, 0, 99);
-	filters.replaceValue(filtered2, 0, 99);
-
 	// to meters
 	filtered1 = filtered1/1000.0;
 	filtered2 = filtered2/1000.0;
+
+	filters.replaceValue(filtered1, 0, 99);
+	filters.replaceValue(filtered2, 0, 99);
 
 	// set NaNs to 99 m (will be ignored in voxel conversion)
 	//cv::patchNaNs(filtered1, 99);
