@@ -32,23 +32,18 @@ int main(){
 
 
 void provider(){
-int counter = 0;
-	while(true){
-
-		myqueue.push(counter)
-		usleep(3000);
+	int counter = 1;
+	while(counter < 7){
+		myqueue.push(counter);
+		std::cout << "- provider added:" << counter << std::endl;
+		usleep(1000000);
 		counter ++;
 	}
-
 }
 
 void worker(){
-
-
 	while(true){
-
-
-
-		usleep(300);
+		std::cout << "--- Worker fetched: " << myqueue.pop() << std::endl;
+		usleep(2000000);
 	}
 }
