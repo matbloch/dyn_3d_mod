@@ -13,6 +13,8 @@ class ImageFilters
 		/* Gaussian filtering */
 		static void gaussian(cv::Mat in, cv::Mat &out, int filter_size, int filter_order);
 
+		void replaceValue(cv::Mat &img, float search, float replace);
+
 		ImageFilters(void);
 
    private:
@@ -40,4 +42,12 @@ void ImageFilters::gaussian(cv::Mat in, cv::Mat &out, int filter_size = 11, int 
 			cv::GaussianBlur( in, out, cv::Size( filter_size, filter_size ), 0, 0 );
 		}
 	}
+}
+
+void ImageFilters::replaceValue(cv::Mat &img, float search, float replace)
+{
+	for(int i=0; i<img.rows; i++)
+		for(int j=0; j<img.cols; j++)
+			if(img.at<float>(i,j) == search)
+				img.at<float>(i,j) = replace;
 }
