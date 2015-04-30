@@ -104,10 +104,10 @@ void voxelGrid::calcVoxel_Depth_Pixels(){
 
 			// Check if pixels are within image
 			if (Voxels.at<cv::Vec3f>(i,j,k)[0]>=640 || Voxels.at<cv::Vec3f>(i,j,k)[0]<0)
-				Voxels.at<cv::Vec3f>(i,j,k)[0] = 1;
+				Voxels.at<cv::Vec3f>(i,j,k)[0] = NaN;
 
 			if (Voxels.at<cv::Vec3f>(i,j,k)[1]>=480 || Voxels.at<cv::Vec3f>(i,j,k)[1]<0)
-				Voxels.at<cv::Vec3f>(i,j,k)[1] = 1;
+				Voxels.at<cv::Vec3f>(i,j,k)[1] = NaN;
 	    }
 }
 
@@ -130,7 +130,7 @@ Mat voxelGrid::fillVoxels(Mat image)
 		    {
 		    	// If pixel is not in image return nan
 		    	if (isnan(Voxels.at<cv::Vec3f>(i,j,k)[0]) || isnan(Voxels.at<cv::Vec3f>(i,j,k)[1])){
-		    		FilledVoxels.at<float>(i,j,k) = NAN;
+		    		FilledVoxels.at<float>(i,j,k) = 1;
 		    	}
 
 		    	else{
