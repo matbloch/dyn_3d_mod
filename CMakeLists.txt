@@ -13,7 +13,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 ##		ROS HYDRO ONLY
 ########################################################
 
-#find_package(cmake_modules REQUIRED)		# required for ros indigos
+find_package(cmake_modules REQUIRED)		# required for ros indigos
 
 ########################################################
 ##		3RD PARTY LIBRARIES
@@ -44,8 +44,7 @@ include_directories(${PROJECT_SOURCE_DIR}/lib)	# use #include "myfile.h". With s
 # add executables
 #rosbuild_add_executable(main src/main.cpp)
 #rosbuild_link_boost(main program_options regex)
-#rosbuild_add_executable(preprocessing_node src/preprocessing_node.cpp)
-rosbuild_add_executable(buffer src/buffer.cpp)
+rosbuild_add_executable(preprocessing_node src/preprocessing_node.cpp)
 
 ### EXTRINSICS CALIBRATION
 rosbuild_add_executable(ext src/extrinsics_calibration.cpp)
