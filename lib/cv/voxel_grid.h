@@ -172,7 +172,7 @@ float voxelGrid::TSDF(float d_in)
 
 	// All distances in m
 	if (d_in> d_truncate){
-		return 1;
+		return -1.0;
 	}
 	else if (d_in<-d_margin){
 		return 1.0;
