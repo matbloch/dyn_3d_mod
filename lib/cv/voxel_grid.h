@@ -139,7 +139,7 @@ void voxelGrid::fillVoxels(Mat image, Mat FilledVoxels)
 		  for (int j = 0; j < gridsize; j++)
 		    for (int k = 0; k < gridsize; k++)
 		    {
-		    	// If pixel is not in image return nan
+		    	// If pixel is not in image return 1
 		    	if (isnan(Voxels.at<cv::Vec3f>(i,j,k)[0]) || isnan(Voxels.at<cv::Vec3f>(i,j,k)[1])){
 		    		FilledVoxels.at<float>(i,j,k) = 1;
 		    	}
