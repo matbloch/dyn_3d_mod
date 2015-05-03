@@ -5,17 +5,26 @@
 #include <iostream>
 #include <misc/queue.h>
 
+
+// Eigen
+#include <Eigen/Dense>
+
+// OpenCV includes
+#include <opencv2/nonfree/features2d.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/core/eigen.hpp>
+
 // Boost
 #include <boost/thread/thread.hpp>
 
 void provider();
 void worker();
 
-Queue<int> myqueue;
+Queue<cv::Mat> myqueue;
 
 
 int main(){
-
 
 	// start threads
     boost::thread_group threads;
@@ -30,25 +39,22 @@ int main(){
 
 }
 
-
 void provider(){
-int counter = 0;
-	while(true){
+	int counter = 1;
+	while(counter < 7){
 
-		myqueue.push(counter)
-		usleep(3000);
+		cv::Mat Z = cv::Mat::zeros(1,2, CV_8UC1);
+		Z.at<int>(0,0) = counter;
+		myqueue.push(Z);
+		std::cout << "- provider added:" << Z << std::endl;
+		usleep(1000000);
 		counter ++;
 	}
-
 }
 
 void worker(){
-
-
 	while(true){
-
-
-
-		usleep(300);
+		std::cout << "--- Worker fetched: " << myqueue.pop() << std::endl;
+		usleep(2000000);
 	}
 }
