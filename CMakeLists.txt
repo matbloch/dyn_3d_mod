@@ -14,18 +14,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
 ### add header files
 include_directories(${PROJECT_SOURCE_DIR}/lib)	# use #include "myfile.h". With sub-folder of lib: #include "mylib/myfile.h"
-########################################################
-##		LIB IGL
-########################################################
 
-
-include("CMakeLists.shared")
-
-add_definitions(-DIGL_NO_OPENGL)
-LIST(APPEND SOURCES ${YIMAGE_SOURCES})
-
-# add after rosbuild_add_executable:
-#target_link_libraries(${PROJECT_NAME}_bin ${SHARED_LIBRARIES} ${PNG_LIBRARY} ${EMBREE_LIBRARIES})
 
 
 
@@ -39,6 +28,8 @@ find_package(cmake_modules REQUIRED)		# required for ros indigo
 ##		3RD PARTY LIBRARIES
 ########################################################
 
+find_package(cmake_modules REQUIRED)
+
 # add boost libraries
 #rosbuild_add_boost_directories()
 
@@ -48,6 +39,19 @@ find_package( PCL 1.2 REQUIRED segmentation filters visualization )
 # eigen
 find_package(Eigen REQUIRED)
 include_directories(${Eigen_INCLUDE_DIRS})
+
+########################################################
+##		LIB IGL
+########################################################
+
+
+include("CMakeLists.shared")
+
+add_definitions(-DIGL_NO_OPENGL)
+LIST(APPEND SOURCES ${YIMAGE_SOURCES})
+
+# add after rosbuild_add_executable:
+#target_link_libraries(${PROJECT_NAME}_bin ${SHARED_LIBRARIES} ${PNG_LIBRARY} ${EMBREE_LIBRARIES})
 
 ########################################################
 ##		EXECUTABLES
