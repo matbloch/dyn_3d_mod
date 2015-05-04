@@ -80,9 +80,9 @@ void print_instructions();
 
 void ros_thread(unsigned int,unsigned int);	    // includes the ros spinner
 void interface_thread();  // user interface
+void InitializeVoxelGrids();
 
-
-void preprocessing_callback(const sensor_msgs::Imvoid InitializeVoxelGrids()ageConstPtr& msg1, const sensor_msgs::ImageConstPtr& msg2)
+void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor_msgs::ImageConstPtr& msg2)
 {
 
 	//ROS_INFO("Synced callback was called.");
