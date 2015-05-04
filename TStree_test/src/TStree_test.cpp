@@ -10,19 +10,29 @@
 using namespace std;
 using namespace cv;
 
+typedef double ScalarType;
+typedef unsigned IndexType;
+
+static int MAX_DIM = 7;
+int resolution = pow(2, MAX_DIM);
+
 //intermediate result: grid points, at which the imlicit function will be evaluated, #G x3
-Eigen::MatrixXd grid_points;
+//Eigen::MatrixXf grid_points(,3);
+Eigen::Matrix<ScalarType, Eigen::Dynamic, 3> grid_points(resolution*resolution*resolution,3);
 //intermediate result: implicit function values at the grid points, #G x1
-Eigen::VectorXd grid_values;
+//Eigen::VectorXf grid_values;
+Eigen::Matrix<ScalarType, Eigen::Dynamic, 1> grid_values(resolution*resolution*resolution,1);
 //intermediate result: grid point colors, for display, #G x3
 Eigen::MatrixXd grid_colors;
 //intermediate result: grid lines, for display, #L x6 (each row contains
 //starting and ending point of line segment)
 Eigen::MatrixXd grid_lines;
 //output: vertex array, #V x3
-Eigen::MatrixXd V;
+//Eigen::MatrixXf V;
+Eigen::Matrix<float, Eigen::Dynamic, 3>  V;
 //output: face array, #F x3
-Eigen::MatrixXi F;
+//Eigen::MatrixXi F;
+Eigen::Matrix<IndexType, Eigen::Dynamic, 3> F;
 //output: face normals of the reconstructed mesh, #F x3
 Eigen::MatrixXd FN;
 
@@ -31,7 +41,7 @@ TwBar *mybar;
 
 static int REF = 20;
 
-static int MAX_DIM = 7;
+
 static int GRID_SIZE = (int)pow(2,MAX_DIM);
 static float spacing_in_m = 0.02;
 
@@ -91,7 +101,7 @@ void getCameraPose(cv::Mat R, cv::Mat tVec)
 //Initialize tweakbar
 bool callback_init(igl::Viewer& viewer)
 {
-  int resolution = pow(2, MAX_DIM);
+//  int resolution = pow(2, MAX_DIM);
 
   mybar = TwNewBar("MarchingCubesDemo");
   // change default tweak bar size and color
@@ -128,7 +138,7 @@ void createGrid()
   F.resize(0,3);
   FN.resize(0,3);
 
-  int resolution = pow(2, MAX_DIM);
+//  int resolution = pow(2, MAX_DIM);
 
   //diagonal
   Eigen::RowVector3d bb_max(max_v[0], max_v[1], max_v[2]);
@@ -163,7 +173,7 @@ void createGrid()
 void getLines()
 {
 
-  int resolution = pow(2, MAX_DIM);
+//  int resolution = pow(2, MAX_DIM);
 
   int nnodes = grid_points.rows();
   grid_lines.resize(3*nnodes,6);
@@ -291,8 +301,10 @@ bool callback_key_down(igl::Viewer& viewer, unsigned char key, int modifiers)
   {
     // show reconstructed mesh
     viewer.data.clear();
-
-    int resolution = pow(2, MAX_DIM);
+    //std::cout << grid_points << std::endl;
+    std::cout << "point" << std::endl;
+    //std::cout << grid_values << std::endl;
+//    int resolution = pow(2, MAX_DIM);
     // Code for computing the mesh (V,F) from grid_points and grid_values
     if (grid_points.rows()==0 || grid_values.rows() == 0)
     {
@@ -300,20 +312,32 @@ bool callback_key_down(igl::Viewer& viewer, unsigned char key, int modifiers)
       return true;
     }
     // run Marching Cubes
-    igl::marching_cubes(grid_values,grid_points, resolution, resolution, resolution, V, F);
+
+  Eigen::Matrix<float, Eigen::Dynamic, 3> points = grid_points.cast<float>();
+  Eigen::Matrix<float, Eigen::Dynamic, 1> values = grid_values.cast<float>();
+//  Eigen::Matrix<ScalarType, Eigen::Dynamic, 3> vertices;
+//
+
+//  Eigen::Matrix<IndexType, Eigen::Dynamic, 3> faces;
+    igl::marching_cubes(values,points, resolution, resolution, resolution, V, F);
+//    igl::marching_cubes(grid_values.cast<float>(),grid_points.cast<float>(), resolution, resolution, resolution, V, F);
     if (V.rows()==0)
     {
       cerr<<"Marching Cubes failed!"<<endl;
       return true;
     }
-    igl::per_face_normals(V,F,FN);
-    viewer.data.set_mesh(V, F);
+//    igl::per_face_normals(V,F,FN);
+    Eigen::MatrixXd Vertex = V.cast<double>();
+    Eigen::MatrixXi Faces = F.cast<int>();
+    viewer.data.set_mesh(Vertex, Faces);
     viewer.core.show_lines = true;
     viewer.core.show_faces = true;
-    viewer.data.set_normals(FN);
+//    viewer.data.set_normals(FN);
   }
   if (key == '4'){
     grid_values = tstree.read(0);
+    //std::cout << grid_values << std::endl;
+    std::cout << grid_values.size() << std::endl;
     createGrid();
     callback_key_down(viewer, '3', 0);
     cout << "read finish" << endl;

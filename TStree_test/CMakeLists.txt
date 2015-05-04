@@ -20,6 +20,6 @@ LIST(APPEND SOURCES ${YIMAGE_SOURCES})
 #message(FATAL_ERROR ${PNG_LIBRARY})
 
 add_executable(${PROJECT_NAME}_bin ${SOURCES} ${SHARED_SOURCES})
-target_link_libraries(${PROJECT_NAME}_bin ${SHARED_LIBRARIES} ${PNG_LIBRARY} ${EMBREE_LIBRARIES} ${OpenCV_LIBS})
+target_link_libraries(${PROJECT_NAME}_bin ${SHARED_LIBRARIES} ${PNG_LIBRARY} ${EMBREE_LIBRARIES} ${OpenCV_LIBS} Xcursor Xinerama)
 
 
