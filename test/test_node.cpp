@@ -42,9 +42,9 @@ cv::Mat FilledVoxels2;
 cv::Mat FusedVoxels;
 
 // grid status
-static int MAX_DIM = 5;
+static int MAX_DIM = 6;
 static int GRID_SIZE = (int)pow(2,MAX_DIM);
-static float spacing_in_m = 0.3;
+static float spacing_in_m = 0.05;
 float max_v[3] = {(float)(GRID_SIZE-1), (float)(GRID_SIZE-1), (float)(GRID_SIZE-1)};
 float min_v[3] = {0, 0, 0};
 
@@ -84,7 +84,7 @@ void getCameraPoses(cv::Mat R1, cv::Mat tVec1, cv::Mat R2, cv::Mat tVec2){
 	// Translation vector in Camera frame
 	tVec1.at<float>(0) = 0;
 	tVec1.at<float>(1) = 0;
-	tVec1.at<float>(2) = -5;
+	tVec1.at<float>(2) = -1.5;
 
 	// get extrinsics
 	Eigen::Matrix4f extrinsics;
@@ -140,6 +140,9 @@ int main(int argc, char** argv)
 	storage2["img"] >> filtered2;
 	storage2.release();
 
+//	std::cout << filtered1 << std::endl;
+//	cv::waitKey();
+
 	/* ========================================== *\
 	* 		1. Setup voxel struture
 	\* ========================================== */
@@ -154,6 +157,14 @@ int main(int argc, char** argv)
 	grid1.fillVoxels(filtered2, FilledVoxels2);
 
 	ROS_INFO("Voxels filled");
+
+//	for (int i = 0; i < GRID_SIZE; i++)
+//		  for (int j = 0; j < GRID_SIZE; j++)
+//		    for (int k = 0; k < GRID_SIZE; k++)
+//		    {
+//		    	if (FilledVoxels1.at<float>(i,j,k) != 1 &&  FilledVoxels1.at<float>(i,j,k) != -1 )
+//		    	std::cout << FilledVoxels1.at<float>(i,j,k) << std::endl;
+//		    }
 
 	/* ========================================== *\
 	* 		3. Fusion
