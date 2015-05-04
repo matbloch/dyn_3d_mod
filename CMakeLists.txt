@@ -5,15 +5,35 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 
 rosbuild_init()
 
+########################################################
+##		PATH SETUP
+########################################################
 
 #set the default path for built executables to the "bin" directory
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
+### add header files
+include_directories(${PROJECT_SOURCE_DIR}/lib)	# use #include "myfile.h". With sub-folder of lib: #include "mylib/myfile.h"
 ########################################################
-##		ROS HYDRO ONLY
+##		LIB IGL
 ########################################################
 
-find_package(cmake_modules REQUIRED)		# required for ros indigos
+
+include("CMakeLists.shared")
+
+add_definitions(-DIGL_NO_OPENGL)
+LIST(APPEND SOURCES ${YIMAGE_SOURCES})
+
+# add after rosbuild_add_executable:
+#target_link_libraries(${PROJECT_NAME}_bin ${SHARED_LIBRARIES} ${PNG_LIBRARY} ${EMBREE_LIBRARIES})
+
+
+
+########################################################
+##		ROS INDIGO ONLY
+########################################################
+
+find_package(cmake_modules REQUIRED)		# required for ros indigo
 
 ########################################################
 ##		3RD PARTY LIBRARIES
@@ -30,14 +50,6 @@ find_package(Eigen REQUIRED)
 include_directories(${Eigen_INCLUDE_DIRS})
 
 ########################################################
-##		HEADER FILES
-########################################################
-
-### add header files
-include_directories(${PROJECT_SOURCE_DIR}/lib)	# use #include "myfile.h". With sub-folder of lib: #include "mylib/myfile.h"
-
-
-########################################################
 ##		EXECUTABLES
 ########################################################
 
@@ -51,6 +63,11 @@ rosbuild_add_executable(ext src/extrinsics_calibration.cpp)
 target_link_libraries(ext ${PCL_LIBRARIES} libvtkCommon.so libvtkFiltering.so ) # for pcl::visualizer
 
 ### TESTS
-rosbuild_add_executable(test_config test/test_config.cpp)
-rosbuild_add_executable(test_filters test/test_filters.cpp)
-rosbuild_add_executable(test_voxels test/test_voxels.cpp)
+#rosbuild_add_executable(test_config test/test_config.cpp)
+#rosbuild_add_executable(test_filters test/test_filters.cpp)
+#rosbuild_add_executable(test_voxels test/test_voxels.cpp)
+rosbuild_add_executable(test_node test/test_node.cpp)
+target_link_libraries(test_node ${SHARED_LIBRARIES} ${PNG_LIBRARY} ${EMBREE_LIBRARIES})
+#rosbuild_add_executable(test_buffer test/test_buffer.cpp)
+
+
