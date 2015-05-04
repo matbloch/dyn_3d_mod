@@ -9,6 +9,10 @@ rosbuild_init()
 ##		PATH SETUP
 ########################################################
 
+SET(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+set(CMAKE_COLOR_MAKEFILE ON)
+
 #set the default path for built executables to the "bin" directory
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
@@ -16,19 +20,9 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 include_directories(${PROJECT_SOURCE_DIR}/lib)	# use #include "myfile.h". With sub-folder of lib: #include "mylib/myfile.h"
 
 
-
-
-########################################################
-##		ROS INDIGO ONLY
-########################################################
-
-find_package(cmake_modules REQUIRED)		# required for ros indigo
-
 ########################################################
 ##		3RD PARTY LIBRARIES
 ########################################################
-
-find_package(cmake_modules REQUIRED)
 
 # add boost libraries
 #rosbuild_add_boost_directories()
@@ -43,7 +37,6 @@ include_directories(${Eigen_INCLUDE_DIRS})
 ########################################################
 ##		LIB IGL
 ########################################################
-
 
 include("CMakeLists.shared")
 
