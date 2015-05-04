@@ -31,7 +31,7 @@ include_directories(${PROJECT_SOURCE_DIR}/lib)	# use #include "myfile.h". With s
 find_package( PCL 1.2 REQUIRED segmentation filters visualization )
 
 # eigen
-find_package(Eigen REQUIRED)
+find_package(EIGEN REQUIRED)
 include_directories(${Eigen_INCLUDE_DIRS})
 
 ########################################################
@@ -53,7 +53,7 @@ LIST(APPEND SOURCES ${YIMAGE_SOURCES})
 # add executables
 #rosbuild_add_executable(main src/main.cpp)
 #rosbuild_link_boost(main program_options regex)
-rosbuild_add_executable(preprocessing_node src/preprocessing_node.cpp)
+#rosbuild_add_executable(preprocessing_node src/preprocessing_node.cpp)
 
 ### EXTRINSICS CALIBRATION
 rosbuild_add_executable(ext src/extrinsics_calibration.cpp)
@@ -64,7 +64,7 @@ target_link_libraries(ext ${PCL_LIBRARIES} libvtkCommon.so libvtkFiltering.so ) 
 #rosbuild_add_executable(test_filters test/test_filters.cpp)
 #rosbuild_add_executable(test_voxels test/test_voxels.cpp)
 rosbuild_add_executable(test_node test/test_node.cpp)
-target_link_libraries(test_node ${SHARED_LIBRARIES} ${PNG_LIBRARY} ${EMBREE_LIBRARIES})
+target_link_libraries(test_node ${SHARED_LIBRARIES} ${PNG_LIBRARY} ${EMBREE_LIBRARIES} Xcursor Xinerama)
 #rosbuild_add_executable(test_buffer test/test_buffer.cpp)
 
 
