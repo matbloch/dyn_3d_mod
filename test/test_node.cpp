@@ -26,6 +26,10 @@
 // time space tree library
 #include "tree/TStree.hpp"
 
+
+// IGL includes
+#include <igl/readOFF.h>
+
 // object handlers
 ConfigHandler conf;
 ImageFilters filters;
