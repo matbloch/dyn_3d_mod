@@ -127,8 +127,8 @@ class TStree{
     bool all_same(tree<float> *tr, tree<float>::sibling_iterator current, int t);
     bool has_value(tree<TimeTree >::sibling_iterator main_cur);
     bool has_value(tree<float>::sibling_iterator current);
-    void insertToVoxelPos(vector<int>* index, int val, float* p);
-    void insertToVoxelPos(vector<int>* index, int val, Eigen::VectorXd* p);
+    void insertToVoxelPos(vector<int>* index, float val, float* p);
+    void insertToVoxelPos(vector<int>* index, float val, Eigen::VectorXd* p);
     void convertTreeIndextoVoxelPos(TimeTree* t_tr, vector<int>* index, int t, float* p);
     void convertTreeIndextoVoxelPos(TimeTree* t_tr, vector<int>* index, int t, Eigen::VectorXd* p);
     void convertTreeIndextoVoxelPos(TimeTree* t_tr, vector<int> *index, Eigen::VectorXd* p);
