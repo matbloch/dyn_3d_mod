@@ -721,7 +721,7 @@ void TStree::merge_trees(tree<TimeTree>* main_tr, tree<TimeTree>::sibling_iterat
  * float *p: array of signed distances of the grid (return)
  */
 
-void TStree::insertToVoxelPos(vector<int>* index, int val, float* p){
+void TStree::insertToVoxelPos(vector<int>* index, float val, float* p){
   int num = 0;
   /*
      for(int i=0; i<index.size(); i++){
@@ -766,7 +766,7 @@ void TStree::insertToVoxelPos(vector<int>* index, int val, float* p){
       }
 }
 
-void TStree::insertToVoxelPos(vector<int>* index, int val, Eigen::VectorXd* p){
+void TStree::insertToVoxelPos(vector<int>* index, float val, Eigen::VectorXd* p){
   int num = 0;
   /*
      for(int i=0; i<index.size(); i++){
