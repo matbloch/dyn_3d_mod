@@ -12,7 +12,7 @@
 #include <Eigen/Geometry>
 
 // For Debug
-//#define TIME_DEBUG
+#define TIME_DEBUG
 #ifdef TIME_DEBUG
 #include <sys/time.h>
 struct timeval tv;
@@ -50,7 +50,7 @@ class TStree{
 
       public:
         ValTime(){}
-        ValTime(int _val, int _time){
+        ValTime(float _val, int _time){
           val = _val;
           time = _time;
         }
@@ -190,6 +190,9 @@ void TStree::insert(cv::Mat voxel_values, int time){
   cout << "make_octree: "<< before-after << "s" <<endl;
 #endif
 
+  
+  kptree::print_tree_bracketed(tr, std::cout);
+  cout << "first made " << endl;
   tree<float>::sibling_iterator root;
   root = tr.begin();
 #ifdef TIME_DEBUG
@@ -216,6 +219,7 @@ void TStree::insert(cv::Mat voxel_values, int time){
 void TStree::insert(float*** p, int time){
 
   tree<float> tr = make_octree(WIDTH, MAX_V[0], MIN_V[0], MAX_V[1], MIN_V[1], MAX_V[2], MIN_V[2], MAX_DIM, p);
+
   tree<float>::sibling_iterator root;
   root = tr.begin();
   merge_trees(&tstree, main_root, &tr, root, time);
