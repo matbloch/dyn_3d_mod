@@ -25,6 +25,10 @@
 // ICP
 #include <pcl/registration/icp.h>
 
+// outlier removal
+#include <pcl/filters/statistical_outlier_removal.h>
+#include <pcl/filters/radius_outlier_removal.h>
+#include <pcl/filters/median_filter.h>
 
 class PCAligner
 {
@@ -48,7 +52,7 @@ class PCAligner
     void setInputClouds (PCXYZ::Ptr c1, PCXYZ::Ptr c2);
 
     /* parameters */
-    void setCutoffDistance(float dist);
+    void setCutoffDistance(std::vector<float> thresholds);
     void setLeafSize(float size);
     void setNormalEstSearchRadius(float radius);
     void setRANSACMaxCorrespondenceDist(float dist);
@@ -126,7 +130,11 @@ class PCAligner
 	Eigen::Matrix4f icp_transformation_;
 
     // Parameters
-	float cut_off_distance_;
+	float cut_off_distance_x_from_;
+	float cut_off_distance_x_to_;
+	float cut_off_distance_y_from_;
+	float cut_off_distance_y_to_;
+	float cut_off_distance_z_;
 	float leaf_size_;	// downsampling size
 	float normal_est_search_radius_;
 	float shot_search_radius_;
@@ -147,7 +155,11 @@ class PCAligner
 
 
 PCAligner::PCAligner () :
-	  cut_off_distance_ (15),
+	  cut_off_distance_x_from_ (0),
+	  cut_off_distance_x_to_ (0),
+	  cut_off_distance_y_from_ (0),
+	  cut_off_distance_y_to_ (0),
+	  cut_off_distance_z_ (15),
       leaf_size_ (0.2),
       normal_est_search_radius_ (1),
       shot_search_radius_ (0.8),
@@ -175,8 +187,20 @@ void PCAligner::setInputClouds (PCXYZ::Ptr c1, PCXYZ::Ptr c2)
 
 }
 
-void PCAligner::setCutoffDistance(float dist){
-	cut_off_distance_ = dist;
+void PCAligner::setCutoffDistance(std::vector<float> thresholds){
+
+
+	if(thresholds.size() != 5){
+		std::cout << "The thresholds must have the following format: {x_from, x_to, y_from, y_to, z}. A threshold equal to zero means no filtering.";
+		return;
+	}
+
+
+	cut_off_distance_x_from_ = thresholds[0];
+	cut_off_distance_x_to_ = thresholds[1];
+	cut_off_distance_y_from_ = thresholds[2];
+	cut_off_distance_y_to_ = thresholds[3];
+	cut_off_distance_z_ = thresholds[4];
 }
 void PCAligner::setLeafSize(float size){
 	leaf_size_ = size;
@@ -226,11 +250,14 @@ void PCAligner::filterClouds ()
 
 	filtered_estimation_cloud1_ = PCXYZ::Ptr (new PCXYZ);
 	filtered_estimation_cloud2_ = PCXYZ::Ptr (new PCXYZ);
+	PCXYZ::Ptr tmp1 = PCXYZ::Ptr (new PCXYZ);
+	PCXYZ::Ptr tmp2 = PCXYZ::Ptr (new PCXYZ);
+
 
 	// 1: CUTOFF FILTERING - removing measurements with big variance
 	pcl::PassThrough<pcl::PointXYZ> pass;
 	pass.setFilterFieldName ("z");
-	pass.setFilterLimits (0, cut_off_distance_);
+	pass.setFilterLimits (0, cut_off_distance_z_);
 
 	pass.setInputCloud (cloud1_);
 	pass.filter (*filtered_estimation_cloud1_);
@@ -238,17 +265,40 @@ void PCAligner::filterClouds ()
 	pass.setInputCloud (cloud2_);
 	pass.filter (*filtered_estimation_cloud2_);
 
+	if(cut_off_distance_x_from_!= cut_off_distance_x_to_){
+		std::cout << "from " << cut_off_distance_x_from_ << std::endl;
+		pass.setFilterFieldName ("x");
+		pass.setFilterLimits (cut_off_distance_x_from_, cut_off_distance_x_to_);
+		pass.setInputCloud (filtered_estimation_cloud1_);
+		pass.filter (*filtered_estimation_cloud1_);
+		pass.setInputCloud (filtered_estimation_cloud2_);
+		pass.filter (*filtered_estimation_cloud2_);
+	}
+	if(cut_off_distance_y_from_!=cut_off_distance_y_to_){
+		std::cout << "from " << cut_off_distance_y_from_ << std::endl;
+		pass.setFilterFieldName ("y");
+		pass.setFilterLimits (cut_off_distance_y_from_, cut_off_distance_y_to_);
+		pass.setInputCloud (filtered_estimation_cloud1_);
+		pass.filter (*filtered_estimation_cloud1_);
+		pass.setInputCloud (filtered_estimation_cloud2_);
+		pass.filter (*filtered_estimation_cloud2_);
+	}
+
 	// 2: DOWNSAMPLING
 	pcl::VoxelGrid<pcl::PointXYZ> filter;
 	filter.setLeafSize(leaf_size_,leaf_size_,leaf_size_);
 
 	// filter first cloud
 	filter.setInputCloud(filtered_estimation_cloud1_);
-	filter.filter(*filtered_estimation_cloud1_);
+	filter.filter(*tmp1);
+
+	filtered_estimation_cloud1_ = tmp1;
 
 	// filter second cloud
 	filter.setInputCloud(filtered_estimation_cloud2_);
-	filter.filter(*filtered_estimation_cloud2_);
+	filter.filter(*tmp2);
+
+	filtered_estimation_cloud2_ = tmp2;
 
 	std::cout << "--- downsampling and filtering complete." << std::endl;
 
