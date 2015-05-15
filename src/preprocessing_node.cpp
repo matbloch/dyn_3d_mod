@@ -518,7 +518,12 @@ bool callback_key_down(igl::Viewer& viewer, unsigned char key, int modifiers)
 		visualize_mesh();
 		cout << "update finish" << endl;
 	}
-	if (key == '4')
+	if (key == '4'){
+		tstree.rewind(&grid_values);
+		visualize_mesh();
+		cout << "rewind finish" << endl;
+	}
+	if (key == '5')
 	{
 		//show grid points with colored nodes and connected with lines
 		viewer.data.clear();
