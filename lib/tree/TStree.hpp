@@ -12,7 +12,7 @@
 #include <Eigen/Geometry>
 
 // For Debug
-#define TIME_DEBUG
+//#define TIME_DEBUG
 #ifdef TIME_DEBUG
 #include <sys/time.h>
 struct timeval tv;
@@ -97,6 +97,7 @@ class TStree{
     void insert(float*** p, int time);
     Eigen::VectorXd read(int time);
     void update(Eigen::VectorXd* signed_distance);
+    void rewind(Eigen::VectorXd* signed_distance);
     void print_timespacetree();
 
   private:
@@ -122,7 +123,7 @@ class TStree{
     void insertToTree(tree<float>* tr, tree<float>::sibling_iterator current, vector<int> index, float*** p);
     void read_tree(tree<TimeTree >* tr, tree<TimeTree>::sibling_iterator current, vector<int>* index, int t, float* p);
     void read_tree(tree<TimeTree >* tr, tree<TimeTree>::sibling_iterator current, vector<int>* index, int t, Eigen::VectorXd* p);
-    void read_tree(tree<TimeTree>* tr, tree<TimeTree>::sibling_iterator current, vector<int>* index, Eigen::VectorXd* p);
+    void read_tree(tree<TimeTree>* tr, tree<TimeTree>::sibling_iterator current, vector<int>* index, bool isForward, Eigen::VectorXd* p);
     bool all_same(tree<float> *tr, tree<float>::sibling_iterator current);
     bool all_same(tree<float> *tr, tree<float>::sibling_iterator current, int t);
     bool has_value(tree<TimeTree >::sibling_iterator main_cur);
@@ -132,6 +133,7 @@ class TStree{
     void convertTreeIndextoVoxelPos(TimeTree* t_tr, vector<int>* index, int t, float* p);
     void convertTreeIndextoVoxelPos(TimeTree* t_tr, vector<int>* index, int t, Eigen::VectorXd* p);
     void convertTreeIndextoVoxelPos(TimeTree* t_tr, vector<int> *index, Eigen::VectorXd* p);
+    void convertTreeIndextoVoxelPos_back(TimeTree* t_tr, vector<int> *index, Eigen::VectorXd* p);
 };
 
 ostream& operator<<(ostream& os, const TStree::ValTime& it)
@@ -191,7 +193,7 @@ void TStree::insert(cv::Mat voxel_values, int time){
 #endif
 
   
-  kptree::print_tree_bracketed(tr, std::cout);
+  //kptree::print_tree_bracketed(tr, std::cout);
   cout << "first made " << endl;
   tree<float>::sibling_iterator root;
   root = tr.begin();
@@ -276,7 +278,35 @@ void TStree::update(Eigen::VectorXd* signed_distance){
   gettimeofday(&tv, &tz);
   before = (double)tv.tv_sec + (double)tv.tv_usec * 1.0e-6;
 #endif
-  read_tree(&tstree, head, &index, signed_distance);
+  read_tree(&tstree, head, &index, true, signed_distance);
+#ifdef TIME_DEBUG
+  gettimeofday(&tv, &tz);
+  after = (double)tv.tv_sec + (double)tv.tv_usec * 1.0e-6;
+  cout << "read_octree: "<< before-after << "s" <<endl;
+#endif
+}
+
+/*
+ * Read signed distance values at next time frame
+ * 
+ * Eigen::VectorXd* signed_distance: signed distance values
+ */
+void TStree::rewind(Eigen::VectorXd* signed_distance){
+
+  if(cur_time-- == 0){
+    cout << "reached to end" << endl;
+    cur_time++;
+    return;
+  }
+
+  tree<TimeTree>::sibling_iterator head = tstree.begin();
+  vector<int> index;
+  index.clear();
+#ifdef TIME_DEBUG
+  gettimeofday(&tv, &tz);
+  before = (double)tv.tv_sec + (double)tv.tv_usec * 1.0e-6;
+#endif
+  read_tree(&tstree, head, &index, false, signed_distance);
 #ifdef TIME_DEBUG
   gettimeofday(&tv, &tz);
   after = (double)tv.tv_sec + (double)tv.tv_usec * 1.0e-6;
@@ -865,6 +895,17 @@ void TStree::convertTreeIndextoVoxelPos(TimeTree* t_tr, vector<int> *index, Eige
   }
 }
 
+void TStree::convertTreeIndextoVoxelPos_back(TimeTree* t_tr, vector<int> *index, Eigen::VectorXd* p){
+
+  vector<ValTime>::iterator it = (*t_tr).it;
+  if(((*t_tr).it)==((*t_tr).ttree).begin()){
+    return;
+  }
+  else if((*((*t_tr).it)).time > cur_time){
+    insertToVoxelPos(index, (*(--((*t_tr).it))).val, p);
+  }
+}
+
 /*
  * Read signed distances of the grid at certain time frame from time-space tree
  *
@@ -907,16 +948,21 @@ void TStree::read_tree(tree<TimeTree>* tr, tree<TimeTree>::sibling_iterator curr
   }
 }
 
-void TStree::read_tree(tree<TimeTree>* tr, tree<TimeTree>::sibling_iterator current, vector<int>* index, Eigen::VectorXd* p){
+void TStree::read_tree(tree<TimeTree>* tr, tree<TimeTree>::sibling_iterator current, vector<int>* index, bool isForward, Eigen::VectorXd* p){
   if(has_value(current)){
-    convertTreeIndextoVoxelPos(&(*current), index, p);
+    if(isForward){
+      convertTreeIndextoVoxelPos(&(*current), index, p);
+    }
+    else{
+      convertTreeIndextoVoxelPos_back(&(*current), index, p);
+    }
   }
   else{
     tree<TimeTree >::sibling_iterator child = (*tr).begin(current);
     int order = 0;
     do{
       (*index).push_back(order);
-      read_tree(tr, child, index, p);
+      read_tree(tr, child, index, isForward, p);
       order++;
       (*index).pop_back();
     } while((*tr).end(current) != ++child);
