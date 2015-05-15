@@ -18,9 +18,8 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/eigen.hpp>
 
-// PCL
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl/point_cloud.h>
+// Boost
+#include <boost/thread/thread.hpp>
 
 // Message filters
 #include <message_filters/subscriber.h>
@@ -30,18 +29,16 @@
 #include <message_filters/sync_policies/exact_time.h>		// exact time synchronization
 #include <message_filters/sync_policies/approximate_time.h>	// approximate time synchronization
 
-// Boost
-#include <boost/thread/thread.hpp>
 
 // our own libraries
 #include <config/config_handler.h>
 #include <cv/filters.h>
-#include "cv/voxel_grid.h"
 #include "misc/colio.h"
 #include "definitions.h"
 
+#include "cv/voxel_grid.h"
+
 // status
-std::atomic<bool> recording(false);
 std::atomic<bool> recording_finished(false);
 std::atomic<bool> camera_is_connected(false);
 std::atomic<bool> camera_timed_out(false);
@@ -53,7 +50,8 @@ void print_instructions();
 void ros_thread(unsigned int, unsigned int );
 void interface_thread();
 
-void callback(const sensor_msgs::ImageConstPtr& msg1, const sensor_msgs::ImageConstPtr& msg2)
+
+void callback(const sensor_msgs::ImageConstPtr& msg1, const sensor_msgs::ImageConstPtr& msg2, const sensor_msgs::ImageConstPtr& msg3, const sensor_msgs::ImageConstPtr& msg4)
 {
 
 	// update connection status
@@ -65,11 +63,15 @@ void callback(const sensor_msgs::ImageConstPtr& msg1, const sensor_msgs::ImageCo
 
 	cv_bridge::CvImagePtr cv_ptr1;
 	cv_bridge::CvImagePtr cv_ptr2;
+	cv_bridge::CvImagePtr cv_ptr3;
+	cv_bridge::CvImagePtr cv_ptr4;
 
     try
     {
-      cv_ptr1 = cv_bridge::toCvCopy(msg1, sensor_msgs::image_encodings::TYPE_32FC1);
-      cv_ptr2 = cv_bridge::toCvCopy(msg2, sensor_msgs::image_encodings::TYPE_32FC1);
+      cv_ptr1 = cv_bridge::toCvCopy(msg1, sensor_msgs::image_encodings::TYPE_16UC1);
+      cv_ptr2 = cv_bridge::toCvCopy(msg2, sensor_msgs::image_encodings::TYPE_16UC1);
+      cv_ptr3 = cv_bridge::toCvCopy(msg3, sensor_msgs::image_encodings::BGR8);
+      cv_ptr4 = cv_bridge::toCvCopy(msg4, sensor_msgs::image_encodings::BGR8);
     }
     catch (cv_bridge::Exception& e)
     {
@@ -77,18 +79,37 @@ void callback(const sensor_msgs::ImageConstPtr& msg1, const sensor_msgs::ImageCo
       return;
     }
 
-	cv::imshow("Camera 1", cv_ptr1->image);
+    Mat H1, H2, V;
+    hconcat(cv_ptr1->image, cv_ptr2->image, H1);
+    hconcat(cv_ptr3->image, cv_ptr4->image, H2);
+
+
+    // normalize depth
+    cv::normalize(H1, H1, 0, 255, NORM_MINMAX, CV_8UC1);
+
+    // convert grayscale to rgb
+    cvtColor(H1,H1,CV_GRAY2RGB);
+
+    // concatenate
+    vconcat(H1, H2, V);
+
+    // add text
+    putText(V, "Camera 1: depth", cvPoint(100, 100), FONT_HERSHEY_DUPLEX, 0.8,
+    		cv::Scalar(0, 0, 255), 2.4, 8);
+
+    // add text
+    putText(V, "Camera 2: depth", cvPoint(770, 100), FONT_HERSHEY_DUPLEX, 0.8,
+    		cv::Scalar(0, 0, 255), 2.4, 8);
+
+    putText(V, "Camera 1: color", cvPoint(100, 620), FONT_HERSHEY_DUPLEX, 0.8,
+    		cv::Scalar(0, 0, 255), 2.4, 8);
+
+    // add text
+    putText(V, "Camera 2: color", cvPoint(770, 620), FONT_HERSHEY_DUPLEX, 0.8,
+    		cv::Scalar(0, 0, 255), 2.4, 8);
+
+    cv::imshow("Camera streams", V);
 	cv::waitKey(3);
-
-	cv::imshow("Camera 2", cv_ptr2->image);
-	cv::waitKey(3);
-
-	Mat combine(max(cv_ptr1->image.size().height, cv_ptr2->image.size().height), cv_ptr1->image.size().width + cv_ptr2->image.size().width, CV_8UC3);
-
-
-	cv::imshow("Depth images", combine);
-	cv::waitKey(3);
-
 
 }
 
@@ -102,16 +123,20 @@ int main(int argc, char** argv)
 	// define subscribers
 	message_filters::Subscriber<sensor_msgs::Image> depth_sub_1(nh_, "/camera1/depth/image_raw", 1);
 	message_filters::Subscriber<sensor_msgs::Image> depth_sub_2(nh_, "/camera2/depth/image_raw", 1);
+	message_filters::Subscriber<sensor_msgs::Image> color_sub_1(nh_, "/camera1/rgb/image_raw", 1);
+	message_filters::Subscriber<sensor_msgs::Image> color_sub_2(nh_, "/camera2/rgb/image_raw", 1);
 
 	// callback if message with same timestaps are received (buffer length: 10)
 	typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image,
+															sensor_msgs::Image,
+															sensor_msgs::Image,
 	                                                        sensor_msgs::Image>
 	SyncPolicy;
 
-	message_filters::Synchronizer< SyncPolicy > sync(SyncPolicy(10), depth_sub_1, depth_sub_2);
+	message_filters::Synchronizer< SyncPolicy > sync(SyncPolicy(10), depth_sub_1, depth_sub_2,color_sub_1,color_sub_2);
 
 	// add callback
-	sync.registerCallback(boost::bind(&callback, _1, _2));
+	sync.registerCallback(boost::bind(&callback, _1, _2, _3, _4));
 
 	ROS_INFO("Snapshot node initalized.");
 	print_instructions();
@@ -139,7 +164,7 @@ void print_instructions(){
 	std::cout << "=================================" << std::endl;
 	std::cout << " INSTRUCTION:" << std::endl;
 	std::cout << "---------------------------------" << std::endl;
-	std::cout << " [space]: take a snapshot of the depth images" << std::endl;
+	std::cout << " [space]: terminate visualization" << std::endl;
 	std::cout << "=================================" << std::endl;
 	std::cout<<"\n";
 
@@ -190,9 +215,8 @@ void interface_thread(){
 				k = getch();
 
 				if(k == ' '){
-					if(!recording){
-						recording = true;
-					}
+					recording_finished = true;
+					return;
 				}
 			}
 	}
