@@ -1,8 +1,3 @@
-#include <ros/ros.h>
-#include <image_transport/image_transport.h>
-#include <cv_bridge/cv_bridge.h>
-#include <sensor_msgs/image_encodings.h>
-
 #include <iostream>
 #include <string>
 #include <termios.h>
@@ -23,26 +18,11 @@
 #include <cv/filters.h>
 #include "cv/voxel_grid.h"
 #include "misc/colio.h"
-#include <misc/queue.h>
 #include "definitions.h"
 
 // time space tree library
 #include "tree/TStree.hpp"
 
-// PCL
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl/point_cloud.h>
-
-// Message filters
-#include <message_filters/subscriber.h>
-#include <message_filters/time_synchronizer.h>
-#include <sensor_msgs/Image.h>
-#include <sensor_msgs/CameraInfo.h>
-#include <message_filters/sync_policies/exact_time.h>		// exact time synchronization
-#include <message_filters/sync_policies/approximate_time.h>	// approximate time synchronization
-
-// Boost
-#include <boost/thread/thread.hpp>
 
 // IGL includes
 #include <igl/readOFF.h>
@@ -51,9 +31,9 @@
 #include "igl/MCTables.hh"
 
 // grid status
-static int MAX_DIM = 7;
+static int MAX_DIM = 8;
 static int GRID_SIZE = (int)pow(2,MAX_DIM);
-static float spacing_in_m = 0.02;
+static float spacing_in_m = 0.008;
 float max_v[3] = {(float)(GRID_SIZE-1), (float)(GRID_SIZE-1), (float)(GRID_SIZE-1)};
 float min_v[3] = {0, 0, 0};
 
@@ -63,23 +43,11 @@ ImageFilters filters;
 voxelGrid grid1;
 voxelGrid grid2;
 igl::Viewer viewer;
-Queue<cv::Mat> myqueue;
 
 // globals
 cv::Mat FilledVoxels1;
 cv::Mat FilledVoxels2;
 cv::Mat FusedVoxels;
-
-// status
-std::atomic<bool> recording(false);
-std::atomic<bool> recording_finished(false);
-std::atomic<bool> camera_is_connected(false);
-std::atomic<bool> camera_timed_out(false);
-
-bool isfirst = true;
-
-int frameCounter = 0;
-int FPS = 30;
 
 // Time Space Tree
 TStree tstree((GRID_SIZE-1)*spacing_in_m, MAX_DIM);
@@ -122,279 +90,80 @@ void InitializeVoxelGrids();
 // Fuse function
 void FuseVoxels(cv::Mat Filled1,cv::Mat Filled2,cv::Mat Fused);
 
-// Interface functions
-void print_instructions();
-void ros_thread(unsigned int,unsigned int);	    // includes the ros spinner
-void interface_thread();  // user interface
-
-void preprocessing_callback(const sensor_msgs::ImageConstPtr& msg1, const sensor_msgs::ImageConstPtr& msg2)
+int main(int argc, char** argv)
 {
+	cv::Mat image1;
+	cv::Mat image2;
+	cv::Mat filtered1;
+	cv::Mat filtered2;
 
-	//ROS_INFO("Synced callback was called.");
-
-	// update connection status
-	if(!camera_is_connected){camera_is_connected=true;}
-	// check recording status
-	if(!recording){return;}
-
-    /* ========================================== *\
-     * 		0. OpenCV conversion
-    \* ========================================== */
-
-	cv_bridge::CvImagePtr cv_ptr1;
-	cv_bridge::CvImagePtr cv_ptr2;
-
-    try
-    {
-      cv_ptr1 = cv_bridge::toCvCopy(msg1, sensor_msgs::image_encodings::TYPE_32FC1);
-      cv_ptr2 = cv_bridge::toCvCopy(msg2, sensor_msgs::image_encodings::TYPE_32FC1);
-    }
-    catch (cv_bridge::Exception& e)
-    {
-      ROS_ERROR("cv_bridge exception: %s", e.what());
-      return;
-    }
+	cv::FileStorage storage("test/ml_recording2_img1.yml", cv::FileStorage::READ);
+	storage["img"] >> image1;
+	storage.release();
+	cv::FileStorage storage2("test/ml_recording2_img2.yml", cv::FileStorage::READ);
+	storage2["img"] >> image2;
+	storage2.release();
 
 
-    /* ========================================== *\
-     * 		1. Filtering
-    \* ========================================== */
+	filters.bilateral(image1, filtered1);
+	filters.bilateral(image2, filtered2);
 
-    cv::Mat filtered1;
-    cv::Mat filtered2;
+	filtered1 *= 0.001;
+	filtered2 *= 0.001;
 
-	// prefiltering
-	filters.bilateral(cv_ptr1->image, filtered1);
-	filters.bilateral(cv_ptr2->image, filtered2);
+	/* ========================================== *\
+	 * 		1. Setup voxel struture
+	\* ========================================== */
 
-	// to meters
-	filtered1 = filtered1/1000.0;
-	filtered2 = filtered2/1000.0;
+	InitializeVoxelGrids();
 
-	filters.replaceValue(filtered1, 0, 99);
-	filters.replaceValue(filtered2, 0, 99);
+	std::cout<<"Voxels initialized"<<std::endl;
 
-    /* ========================================== *\
-     * 		2. Voxel grid
-    \* ========================================== */
+	/* ========================================== *\
+	 * 		2. Voxel grid
+	\* ========================================== */
 
 	grid1.fillVoxels(filtered1, FilledVoxels1);
 	grid2.fillVoxels(filtered2, FilledVoxels2);
 
-    /* ========================================== *\
-     * 		3. Fusion
-    \* ========================================== */
+	std::cout<<"Voxels Filled"<<std::endl;
+
+	/* ========================================== *\
+	 * 		3. Fusion
+	\* ========================================== */
 
 	FuseVoxels(FilledVoxels1,FilledVoxels2,FusedVoxels);
 
-    /* ========================================== *\
-     * 		4. Push to buffer
-    \* ========================================== */
-  
-	myqueue.push(FusedVoxels.clone());
+	std::cout<<"Voxels Fused"<<std::endl;
 
-	frameCounter++;
-	std::cout << "# frames stored : " << frameCounter << std::endl;
-
-}
-
-void OctreeIntegration(){
-	std::cout<<"Tree building started"<<std::endl;
-
-	while (!myqueue.isempty()){
-	std::cout << "# frames to go : " << frameCounter << std::endl;
-	tstree.insert(myqueue.pop(), t);
-	t++;
-	frameCounter--;
-	}
-
-	std::cout<<"Tree building done"<<std::endl;
-	//tstree.print_timespacetree();
-}
-
-
-int main(int argc, char** argv)
-{
-
-	ros::init(argc, argv, "dyn_3d_photo");
-	ros::NodeHandle nh_;
-
-	// define subscribers
-	message_filters::Subscriber<sensor_msgs::Image> depth_sub_1(nh_, "/camera1/depth/image_raw", 1);
-	message_filters::Subscriber<sensor_msgs::Image> depth_sub_2(nh_, "/camera2/depth/image_raw", 1);
-
-	// callback if message with same timestaps are received (buffer length: 10)
-	typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image,
-	                                                        sensor_msgs::Image>
-	SyncPolicy;
-
-	message_filters::Synchronizer< SyncPolicy > sync(SyncPolicy(10), depth_sub_1, depth_sub_2);
-
-	// add callback
-	sync.registerCallback(boost::bind(&preprocessing_callback, _1, _2));
-
-	// Configure the voxel grid objects
-	InitializeVoxelGrids();
+	/* ========================================== *\
+	 * 		4. Octree integration
+	\* ========================================== */
 
 	for(int i=0; i<3; i++){
-			max_v[i] = (grid1.units).at(GRID_SIZE-1);
-			min_v[i] = (grid1.units).at(0);
-		}
-
-	std::cout<<"Voxels initialized"<<std::endl;
-
-	ROS_INFO("Preprocessing node initalized.");
-	print_instructions();
-
-	// start threads
-    boost::thread_group threads;
-    boost::thread *t1 = new boost::thread(ros_thread, FPS, 5);	// @ 30 Hz and 5 sec connection timeout
-    boost::thread *t2 = new boost::thread(interface_thread);
-    threads.add_thread(t1);
-    threads.add_thread(t2);
-
-    threads.join_all();
-
-	return 0;
-}
-
-
-
-/* ========================================== *\
- * 		UI
-\* ========================================== */
-
-void print_instructions(){
-
-	std::cout<<"\n";
-	std::cout << "=================================" << std::endl;
-	std::cout << " INSTRUCTION:" << std::endl;
-	std::cout << "---------------------------------" << std::endl;
-	std::cout << " [space]: start/stop recording" << std::endl;
-	std::cout << "=================================" << std::endl;
-	std::cout<<"\n";
-
-}
-
-void ros_thread(unsigned int rate = 30, unsigned int  t = 5){
-
-	ros::Rate r(rate); // standard: 30 Hz
-
-	unsigned int timeout = t;  // connection timeout in seconds
-	time_t init_time = time(0);
-
-	while (!recording_finished)	// spin until calibration has ended
-	{
-
-		if(!camera_is_connected && time(0) > timeout + init_time){
-
-			camera_timed_out = true;
-			std::cout << RED << "--- Camera connection timed out." << RESET << endl;
-			break;
-		}
-
-		ros::spinOnce();
-		r.sleep();
+		max_v[i] = (grid1.units).at(GRID_SIZE-1);
+		min_v[i] = (grid1.units).at(0);
 	}
+	tstree.insert(FusedVoxels, t);
+	t++;
+	//tstree.print_timespacetree();
 
-	return;
+	std::cout<<"Tree insert done"<<std::endl;
 
+	viewer.callback_key_down = callback_key_down;
+	viewer.callback_init = callback_init;
+	callback_key_down(viewer, '1', 0);
+	viewer.launch();
 
-}
-void interface_thread(){
+	std::cout<<"Press 2 to visualize"<<std::endl;
 
-	char k;
-
-	// wait till camera is connected
-	while(!camera_is_connected){
-		if(camera_timed_out){return;}
-		usleep(300);
-	}
-
-	std::cout << GREEN << "--- Camera connection established. Ready to record." << RESET << endl;
-
-	// 1. RECORDING
-	while(!recording_finished){
-
-		// start > stop recording on [space]
-		do{
-			while(true){
-				k = getch();
-
-				if(k == ' '){
-					if(recording){
-						recording = false;
-						std::cout << GREEN << "--- End recording..." << RESET << endl;
-						usleep(1000000);
-						OctreeIntegration();
-						break;
-					}else{
-						recording = true;
-						std::cout << GREEN << "--- Start recording..." << RESET << endl;
-						break;
-					}
-				}
-			}
-
-		}while(recording);
-
-		std::cout<<"\n";
-		std::cout << "=================================" << std::endl;
-		std::cout << " HOW WOULD YOU LIKE TO CONINUE?" << std::endl;
-		std::cout << "---------------------------------" << std::endl;
-		std::cout << " [v]: visualize recorded scene" << std::endl;
-		std::cout << " [r]: record new scene" << std::endl;
-		std::cout << " [q]: quit" << std::endl;
-		std::cout << "=================================" << std::endl;
-		std::cout<<"\n";
-
-		k = ' ';
-
-		while(k != 'r' && k != 'v'){	// loop until valid selection
-			k = getch();
-
-			if(k == 'r'){
-				// TODO: RESET THE OCTREE STRUCTURE AND BUFFER HERE
-
-				std::cout << "--- Ready to record new scene." << RESET << endl;
-			}else if(k == 'v'){
-				// leave outer loop and continue
-				recording = false;
-				recording_finished = true;	// stops the ROS spinner
-				viewer.callback_key_down = callback_key_down;
-				viewer.callback_init = callback_init;
-				callback_key_down(viewer, '1', 0);
-				viewer.launch();
-
-			}else if(k == 'q'){
-				// leave outer loop and end interface loop
-				recording_finished = true;	// stops the ROS spinner
-				return;
-			}else{
-				std::cout << RED << "Please select a valid option" << RESET << std::endl;
-			}
-		}
-	}
-
-	// 1. VISUALIZATION
-	int frame_nr;
-	std::cout<<"\n";
-	std::cout << "=================================" << std::endl;
-	std::cout << "VISUALIZATION" << std::endl;
-	std::cout << "---------------------------------" << std::endl;
-	std::cout << "Specify the frame you want to visualize: ";
-	std::cin >> frame_nr;
-
-
-
-
-	return;
+	cv::waitKey(0);
 
 }
 
-/* ========================================== *\
- * 		Tree and visualization
-\* ========================================== */
+// -------------------
+// External functions
+// -------------------
 
 
 //Initialize tweakbar
@@ -509,6 +278,7 @@ bool callback_key_down(igl::Viewer& viewer, unsigned char key, int modifiers)
 	if (key == '2'){
 		grid_values = tstree.read(0);
 		createGrid();
+
 		visualize_mesh();
 		cout << "read finish" << endl;
 	}
@@ -517,12 +287,7 @@ bool callback_key_down(igl::Viewer& viewer, unsigned char key, int modifiers)
 		visualize_mesh();
 		cout << "update finish" << endl;
 	}
-	if (key == '4'){
-		tstree.rewind(&grid_values);
-		visualize_mesh();
-		cout << "rewind finish" << endl;
-	}
-	if (key == '5')
+	if (key == '4')
 	{
 		//show grid points with colored nodes and connected with lines
 		viewer.data.clear();
@@ -582,10 +347,6 @@ void visualize_mesh(){
 
 }
 
-/* ========================================== *\
- * 		Voxel grid functions
-\* ========================================== */
-
 void getCameraPoses(cv::Mat R1, cv::Mat tVec1, cv::Mat R2, cv::Mat tVec2){
 	// Set up the voxel grid position for camera 1
 //	cv::Mat rVec(3, 1, cv::DataType<float>::type); // Rotation vector
@@ -596,11 +357,17 @@ void getCameraPoses(cv::Mat R1, cv::Mat tVec1, cv::Mat R2, cv::Mat tVec2){
 //	Rodrigues(rVec, R1);
 
 	R1 = Mat::zeros(3,3,CV_32F);
-		R1.at<float>(0,0) = 0.8434;
-		R1.at<float>(0,2) = -0.5373;
-		R1.at<float>(1,1) = -1;
-		R1.at<float>(2,0) = -0.5373;
-		R1.at<float>(2,2) = -0.8434;
+//		R1.at<float>(0,0) = 1;
+//		R1.at<float>(1,1) = -1;
+//		R1.at<float>(2,2) = -1;
+//	R1.at<float>(0,1) = 1;
+//	R1.at<float>(1,2) = -1;
+//	R1.at<float>(2,0) = -1;
+	R1.at<float>(0,0) = 0.8434;
+	R1.at<float>(0,2) = 0.5373;
+	R1.at<float>(1,1) = 1;
+	R1.at<float>(2,0) = -0.5373;
+	R1.at<float>(2,2) = 0.8434;
 
 	// Translation vector in Camera frame
 	tVec1.at<float>(0) = 0;
@@ -619,8 +386,8 @@ void getCameraPoses(cv::Mat R1, cv::Mat tVec1, cv::Mat R2, cv::Mat tVec2){
 	R2 = R_ext*R1;
 	tVec2 = t_ext + R_ext*tVec1;
 
-	//std::cout << "Rext: " << R_ext << std::endl;
-	//std::cout << "text: " << t_ext << std::endl;
+	std::cout << "Rext: " << R_ext << std::endl;
+	std::cout << "text: " << t_ext << std::endl;
 
 //	R2 = R_ext.t()*R1;
 //	tVec2 = R_ext.t()*(tVec1-t_ext);
@@ -644,10 +411,10 @@ void InitializeVoxelGrids(){
 	getCameraPoses(R1,tVec1,R2,tVec2);
 
 
-	//std::cout << "R1: " << R1 << std::endl;
-	//std::cout << "R2: " << R2 << std::endl;
-	//std::cout << "t1: " << tVec1 << std::endl;
-	//std::cout << "t2: " << tVec2 << std::endl;
+	std::cout << "R1: " << R1 << std::endl;
+	std::cout << "R2: " << R2 << std::endl;
+	std::cout << "t1: " << tVec1 << std::endl;
+	std::cout << "t2: " << tVec2 << std::endl;
 
 
 
@@ -686,4 +453,3 @@ void FuseVoxels(cv::Mat Filled1,cv::Mat Filled2,cv::Mat Fused){
 					}
 				}
 }
-

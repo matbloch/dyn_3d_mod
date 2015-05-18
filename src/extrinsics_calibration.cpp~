@@ -211,7 +211,6 @@ int main(int argc, char** argv)
 
 	// display aligned clouds
 	aligner.displayEndResult(true);
-aligner.displaySubResults(true);
 
 	std::cout <<  "--- Waiting for camera connection..." << std::endl;
 

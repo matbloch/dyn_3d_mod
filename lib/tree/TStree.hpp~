@@ -194,7 +194,7 @@ void TStree::insert(cv::Mat voxel_values, int time){
 
   
   //kptree::print_tree_bracketed(tr, std::cout);
-  //cout << "first made " << endl;
+  cout << "first made " << endl;
   tree<float>::sibling_iterator root;
   root = tr.begin();
 #ifdef TIME_DEBUG

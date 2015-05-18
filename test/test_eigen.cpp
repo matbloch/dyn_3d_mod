@@ -5,40 +5,41 @@
  *      Author: RGrandia
  */
 
+#include <iostream>
+#include <ros/package.h>
+
+/* OpenCV 2 */
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <cv.hpp>
+#include <math.h>
+
 // Eigen
 #include <Eigen/Dense>
-#include <opencv2/core/eigen.hpp>
 
-// Configure library
-#include <config/config_handler.h>
 
-ConfigHandler conf;
+int	GRID_SIZE = 2;
+using namespace cv;
+
+double medianMat(cv::Mat Input);
 
 int main(int argc, char** argv)
 {
-	// get extrinsics
-	Eigen::Matrix4f extrinsics;
-	conf.getOptionMatrix("camera_parameters.extrinsics", extrinsics);
-	cv::Mat extrinsics_mat(4,4, CV_32F);
-	cv::eigen2cv(extrinsics, extrinsics_mat);
-	cv::Mat R_ext = extrinsics_mat(cv::Range(0,3), cv::Range(0,3));
-	cv::Mat t_ext = extrinsics_mat(cv::Range(0,3), cv::Range(3,4));
+		cv::Mat Image(5,5,CV_32F);
+		cv::Mat dst(5,5,CV_32F);
+		randu(Image, Scalar::all(0), Scalar::all(10));
+		std::cout << Image << std::endl;
+		int ksize = 3;
+		cv::medianBlur(Image, dst, ksize);
 
-	// get intrinsics
-	Eigen::Matrix3f intrinsics_eig;
-	conf.getOptionMatrix("camera_parameters.intrinsics", intrinsics_eig);
-	cv::eigen2cv(intrinsics_eig, intrinsicMat);
+		std::cout << dst << std::endl;
 
-	// Set up the voxel grid objects for both cameras
-	getCameraPose(R1,tVec1);
-	R2 = R_ext*R1;
-	tVec2 = t_ext + R_ext*tVec1;
-	gridsize = 64;   // Must be 2^x
-	spacing_in_m = 0.05;
-	grid1.setParameters(gridsize, spacing_in_m, intrinsicMat, R1, tVec1);
-	grid2.setParameters(gridsize, spacing_in_m, intrinsicMat, R2, tVec2);
-
-	std::cout<< extrinsics_mat << std::endl;
-	std::cout<< R_ext << std::endl;
-	std::cout<< t_ext << std::endl;
+	return 0;
 }
+
+double medianMat(cv::Mat Input){
+//Input = Input.reshape(0,1); // spread Input Mat to single row
+std::vector<double> vecFromMat;
+Input.copyTo(vecFromMat); // Copy Input Mat to vector vecFromMat
+std::nth_element(vecFromMat.begin(), vecFromMat.begin() + vecFromMat.size() / 2, vecFromMat.end());
+return vecFromMat[vecFromMat.size() / 2];}

@@ -25,7 +25,7 @@ Queue<cv::Mat> myqueue;
 
 
 int main(){
-
+	std::cout << "Start" << std::endl;
 	// start threads
     boost::thread_group threads;
     boost::thread *t1 = new boost::thread(provider);
@@ -42,19 +42,31 @@ int main(){
 void provider(){
 	int counter = 1;
 	while(counter < 7){
-
-		cv::Mat Z = cv::Mat::zeros(1,2, CV_8UC1);
-		Z.at<int>(0,0) = counter;
-		myqueue.push(Z);
-		std::cout << "- provider added:" << Z << std::endl;
-		usleep(1000000);
+		int gridsize = 2;
+		int sz[3] = {gridsize,gridsize,gridsize};
+		cv::Mat Voxels = cv::Mat(3,sz, CV_32FC3, cv::Scalar::all(0));
+		Voxels.at<float>(0,0,0) = (float)counter;
+		myqueue.push(Voxels);
+		std::cout << "- provider added:" << Voxels.at<float>(0,0,0) << std::endl;
+		usleep(100000);
 		counter ++;
 	}
 }
 
 void worker(){
+	cv::Mat output;
 	while(true){
-		std::cout << "--- Worker fetched: " << myqueue.pop() << std::endl;
-		usleep(2000000);
+
+//		if(!myqueue.isempty()){
+		std::cout << "--- empty state: " << myqueue.isempty() << std::endl;
+		output = myqueue.pop();
+		std::cout << "--- Worker fetched: " << output.at<float>(0,0,0) << std::endl;
+
+			usleep(500000);
+//		}
+//		else{
+//			std::cout << "Broken" << std::endl;
+//			break;
+//		}
 	}
 }

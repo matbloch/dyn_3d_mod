@@ -1,0 +1,9 @@
+[extrinsics_calibration]
+approx_leaf_size=0.1
+normal_est_search_radius=0.2
+icp_max_correlation_dist=0.1
+shot_search_radius=0.3
+cutoff_dist=6
+[camera_parameters]
+extrinsics=extrinsics=0.959202,0.154839, -0.236615,0.251951; -0.142318, 0.987411, 0.0692237, 0.00801295; 0.244349, -0.0327252, 0.96915, 0.0339063; 0, 0, 0, 1
+intrinsics=594.214355, 0, 339.307800; 0, 591.040527, 242.739136; 0, 0, 1

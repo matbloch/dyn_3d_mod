@@ -81,4 +81,4 @@ endmacro(_eigen3_check_version)
   mark_as_advanced(EIGEN_INCLUDE_DIR)
   SET(EIGEN_INCLUDE_DIRS ${EIGEN_INCLUDE_DIR} CACHE PATH "The Eigen include path.")
 
-#endif()
+endif()

@@ -71,7 +71,7 @@ class Queue
   }
 
   bool isempty(){
-	return queue_.empty();
+	return queue_.empty()
   }
 
  private:

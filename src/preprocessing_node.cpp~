@@ -53,7 +53,7 @@
 // grid status
 static int MAX_DIM = 7;
 static int GRID_SIZE = (int)pow(2,MAX_DIM);
-static float spacing_in_m = 0.02;
+static float spacing_in_m = 0.019;
 float max_v[3] = {(float)(GRID_SIZE-1), (float)(GRID_SIZE-1), (float)(GRID_SIZE-1)};
 float min_v[3] = {0, 0, 0};
 
