@@ -50,11 +50,11 @@ The software has been tested with the following system configuration:
     ```
     sudo apt-get install ros-indigo-freenect-stack 
     ```
-3. **OpenCV non-free**   
+3. **OpenCV non-free**
     ```
-    sudo add-apt-repository --yes ppa:xqms/opencv-nonfree
-    sudo apt-get update 
-    sudo apt-get install libopencv-nonfree-dev
+    sudo add-apt-repository --yes ppa:xqms/opencv-nonfree	
+    sudo apt-get update		
+    sudo apt-get install libopencv-nonfree-dev		
     ```
 4. **Install visualization libraries**   
     ```
