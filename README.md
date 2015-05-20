@@ -50,6 +50,7 @@ The software has been tested with the following system configuration:
     ```
     sudo apt-get install ros-indigo-freenect-stack 
     ```
+
 3. **OpenCV non-free**
     ```
     sudo add-apt-repository --yes ppa:xqms/opencv-nonfree	
