@@ -44,22 +44,22 @@ The software has been tested with the following system configuration:
     printenv ROS_PACKAGE_PATH
     ```
 
-2. **Install the Kinect drivers and ROS packages**
+2. **Install the Kinect drivers and ROS packages**   
     ```
     sudo apt-get install ros-indigo-freenect-stack 
     ```
-3. **OpenCV non-free**
+3. **OpenCV non-free**   
     ```
     sudo add-apt-repository --yes ppa:xqms/opencv-nonfree
     sudo apt-get update 
     sudo apt-get install libopencv-nonfree-dev
     ```
-4. **Install visualization libraries**
+4. **Install visualization libraries**   
     ```
     LIB IGL stuff
     ```
-5. **Install the Dynamic 3D Modeling software**
-	Clone/copy the repository to home/ros_workspace and `$ cd ros_workspace` and build it using: `$ make`
+5. **Install the Dynamic 3D Modeling software**   
+	Clone/copy the repository to home/ros_workspace and `$ cd ros_workspace` and build it using `$ make` from the package directory
 
 
 ## Running the software
@@ -69,11 +69,11 @@ The OpenKinect drivers have been modified in order to support multiple Kinects. 
 To avoid registration problems, the **device ids** have been added to the launch files.
 
 - **Using the custom launch files:**
-You need to replace the hardeware ids of your Kinect devices in the code of the launch files ==cam1.launch== and ==cam2.launch== where it says:
+You need to replace the hardeware ids of your Kinect devices in the code of the launch files cam1.launch and cam2.launch where it says:
 `<arg name="device_id" value="%replace with your ID%" />`
 
 - **Custom camera intrinsics support:** for calibration see [this package](http://wiki.ros.org/camera_calibration)
-	If you would like to use custom intrinsics rather than the ones provided by the OpenKinect driver, you additionally need to edit the paths to the rgb and the depth configuration file in ==cam1.launch== and ==cam2.launch.
+	If you would like to use custom intrinsics rather than the ones provided by the OpenKinect driver, you additionally need to edit the paths to the rgb and the depth configuration file in cam1.launch and cam2.launch.
 ```
 <arg name="rgb_camera_info_url" value="file:///$(find dyn_3d_mod)/config/rgb_A00365805019051A.yaml" />
 <arg name="depth_camera_info_url" value="file:///$(find dyn_3d_mod)/config/depth_A00365805019051A.yaml" />
@@ -121,7 +121,7 @@ $ rosrun dyn_3d_mod start_recording
 
 ## Sample data
 If you don't have any Kinect devices and want to test the software, you can use a prerecorded scene.
-Instead of launching the camera drivers, you only have to use the ==rosbag== package.
+Instead of launching the camera drivers, you only have to use the rosbag package.
 
 ### Emulating the configuration scene
 To emulate the camera sensor streams for the extrinsics calibration, open a new terminal, head to the sample_scene_configuration.bag file and run:
