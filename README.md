@@ -69,7 +69,7 @@ The OpenKinect drivers have been modified in order to support multiple Kinects. 
 To avoid registration problems, the **device ids** have been added to the launch files.
 
 - **Using the custom launch files:**
-You need to replace the hardeware ids of your Kinect devices in the code of the launch files cam1.launch and cam2.launch where it says:
+You need to replace the hardeware ids of your Kinect devices in the code of the launch files cam1.launch and cam2.launch where it says:    
 `<arg name="device_id" value="%replace with your ID%" />`
 
 - **Custom camera intrinsics support:** for calibration see [this package](http://wiki.ros.org/camera_calibration)
