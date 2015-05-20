@@ -74,11 +74,11 @@ You need to replace the hardeware ids of your Kinect devices in the code of the 
 
 - **Custom camera intrinsics support:** for calibration see [this package](http://wiki.ros.org/camera_calibration)
 	If you would like to use custom intrinsics rather than the ones provided by the OpenKinect driver, you additionally need to edit the paths to the rgb and the depth configuration file in cam1.launch and cam2.launch.
-```
-<arg name="rgb_camera_info_url" value="file:///$(find dyn_3d_mod)/config/rgb_A00365805019051A.yaml" />
-<arg name="depth_camera_info_url" value="file:///$(find dyn_3d_mod)/config/depth_A00365805019051A.yaml" />
-```
-The file names should follow the convention in this example, where **A00365805019051A** equals to the devide id. The configuration files can be placed in the package path under dyn_3d_mod/config. Sample files are provided with this package.
+	```
+	<arg name="rgb_camera_info_url" value="file:///$(find dyn_3d_mod)/config/rgb_A00365805019051A.yaml" />
+	<arg name="depth_camera_info_url" value="file:///$(find dyn_3d_mod)/config/depth_A00365805019051A.yaml" />
+	```
+	The file names should follow the convention in this example, where **A00365805019051A** equals to the devide id. The configuration files can be placed in the package path under dyn_3d_mod/config. Sample files are provided with this package.
 
 ### Camera calibration
 Before you start recording a scene, the relative positioning of the cameras has to be calculated, following the description bellow:
@@ -106,7 +106,7 @@ $ rosrun dyn_3d_mod start_calibration
 ### Recording
 0. Make sure, the cameras are connected: ``$ lsusb``
 1. Start the ROS core: ``$ roscore``
-> ROS core always has to be running when interfacing with the cameras
+> ROS core always has to be running when interfacing with the cameras   
 2. Open a new terminal and launch the camera drivers:
 ```
 $ roslaunch dyn_3d_mod cam1.launch
