@@ -15,9 +15,11 @@ set(CMAKE_COLOR_MAKEFILE ON)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 
 ### add header files
-include_directories(${PROJECT_SOURCE_DIR}/lib)	# use 
-#include "myfile.h". With sub-folder of lib: 
-#include "mylib/myfile.h"
+# usage:
+# include "myfile.h". With sub-folder of lib: 
+# include "mylib/myfile.h"
+
+include_directories(${PROJECT_SOURCE_DIR}/lib)	
 
 ########################################################
 ##		3RD PARTY LIBRARIES
@@ -32,8 +34,6 @@ find_package( PCL 1.2 REQUIRED segmentation filters visualization )
 # eigen
 include_directories(${Eigen_INCLUDE_DIRS})
 
-#message(FATAL_ERROR ${PNG_LIBRARY})
-
 ########################################################
 ##		LIB IGL
 ########################################################
@@ -42,23 +42,27 @@ include("CMakeLists.shared")
 add_definitions(-DIGL_NO_OPENGL)
 LIST(APPEND SOURCES ${YIMAGE_SOURCES})
 
-
 ########################################################
 ##		EXECUTABLES
 ########################################################
 
+# EXAMPLE:
 #add_executable(${PROJECT_NAME}_bin ${SOURCES} ${SHARED_SOURCES})
 #target_link_libraries(${PROJECT_NAME}_bin ${SHARED_LIBRARIES} ${PNG_LIBRARY} ${EMBREE_LIBRARIES} ${OpenCV_LIBS} Xcursor Xinerama)
 
-### MAIN FILES
+### MAIN FILE
 #rosbuild_add_executable(main src/main.cpp)
 #rosbuild_link_boost(main program_options regex)
 rosbuild_add_executable(preprocessing_node src/preprocessing_node.cpp ${SHARED_SOURCES})
 target_link_libraries(preprocessing_node ${SHARED_LIBRARIES} ${PNG_LIBRARY} ${EMBREE_LIBRARIES} ${OpenCV_LIBS} Xcursor Xinerama)
 
 ### EXTRINSICS CALIBRATION
-#rosbuild_add_executable(ext src/extrinsics_calibration.cpp)
-#target_link_libraries(ext ${PCL_LIBRARIES} libvtkCommon.so libvtkFiltering.so ) # for pcl::visualizer
+rosbuild_add_executable(start_calibration src/extrinsics_calibration.cpp)
+target_link_libraries(start_calibration ${PCL_LIBRARIES} libvtkCommon.so libvtkFiltering.so ) # for pcl::visualizer
+
+### TOOLS
+rosbuild_add_executable(cutoff_tuning src/cutoff_tuning.cpp)
+target_link_libraries(cutoff_tuning ${PCL_LIBRARIES} libvtkCommon.so libvtkFiltering.so ) # for pcl::visualizer
 
 ### TESTS
 #rosbuild_add_executable(TStree test/TStree_test.cpp ${SHARED_SOURCES})
