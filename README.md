@@ -15,31 +15,30 @@ The software has been tested with the following system configuration:
 ## Installation
 
 1. **Install the Robot Operating System ROS (Indigo)**: [installation link](http://wiki.ros.org/indigo/Installation/Ubuntu)
-	
     setup sources.list:
     ```
-sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
-```
-Set up keys
-```
-wget https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -O - | sudo apt-key add -
-```
-**Installation**
-```
-sudo apt-get update
-sudo apt-get install ros-indigo-desktop-full
-sudo rosdep init
-rosdep update
-```
-Setup environment variables
-```
-echo "source /opt/ros/indigo/setup.bash" >> ~/.bashrc
-source ~/.bashrc
-```
-Create a folder called `ros_workspace` in Home and add this line to your ~/.bashrc directly under the call to /opt/ros/distro/setup.bash:
-```
+    sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
+    ```
+    Set up keys
+    ```
+    wget https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -O - | sudo apt-key add -
+    ```
+    **Installation**
+    ```
+    sudo apt-get update
+    sudo apt-get install ros-indigo-desktop-full
+    sudo rosdep init
+    rosdep update
+    ```
+    Setup environment variables
+    ```
+    echo "source /opt/ros/indigo/setup.bash" >> ~/.bashrc
+    source ~/.bashrc
+    ```
+    Create a folder called `ros_workspace` in Home and add this line to your ~/.bashrc directly under the call to /opt/ros/distro/setup.bash:
+    ```
     export ROS_PACKAGE_PATH=~/ros_workspace:${ROS_PACKAGE_PATH}
-	```
+    ```
     Restart your machine and test if the path has been added
     ```
     printenv ROS_PACKAGE_PATH
@@ -50,15 +49,15 @@ Create a folder called `ros_workspace` in Home and add this line to your ~/.bash
     sudo apt-get install ros-indigo-freenect-stack 
     ```
 3. **OpenCV non-free**
-```
-sudo add-apt-repository --yes ppa:xqms/opencv-nonfree
-sudo apt-get update 
-sudo apt-get install libopencv-nonfree-dev
-```
+    ```
+    sudo add-apt-repository --yes ppa:xqms/opencv-nonfree
+    sudo apt-get update 
+    sudo apt-get install libopencv-nonfree-dev
+    ```
 4. **Install visualization libraries**
-```
-LIB IGL stuff
-```
+    ```
+    LIB IGL stuff
+    ```
 5. **Install the Dynamic 3D Modeling software**
 	Clone/copy the repository to home/ros_workspace and `$ cd ros_workspace` and build it using: `$ make`
 
