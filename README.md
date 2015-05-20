@@ -81,27 +81,28 @@ You need to replace the hardeware ids of your Kinect devices in the code of the 
 	The file names should follow the convention in this example, where **A00365805019051A** equals to the devide id. The configuration files can be placed in the package path under dyn_3d_mod/config. Sample files are provided with this package.
 
 ### Camera calibration
-Before you start recording a scene, the relative positioning of the cameras has to be calculated, following the description bellow:
-0. Make sure, the cameras are connected: ``$ lsusb``
-1. Start the ROS core: ``$ roscore``
-	ROS core always has to be running when interfacing with the cameras
-2. Open a new terminal and launch the camera drivers:
-	```
+
+1. **Make sure, the cameras are connected:**
+	``$ lsusb``
+2. **Open a new terminal and launch the camera drivers:**
+    ```
 	$ roslaunch dyn_3d_mod cam1.launch
 	$ roslaunch dyn_3d_mod cam2.launch
-	```
-3. Open a new terminal and start the calibration:
-	```
+    ```
+3. **Open a new terminal and start the calibration:**   
+    ```
 	$ roscd dyn_3d_mod
 	$ rosrun dyn_3d_mod start_calibration
+    ```
+4. **Install visualization libraries**   
+    ```
+    LIB IGL stuff
+    ```
+5. **Optional**: Use cutoff filtering    
+	If the configuration fails due to noise or a very small overlapping window, you can apply an additional cutoff filter to get a better initial guess of the transformation. Use the tuning tool to estimate the filter parameters which you can add to the config file under **config/config.ini**    
 	```
-5. **Optional**: Use cutoff filtering
-If the configuration fails due to noise or a very small overlapping window, you can apply a additional cutoff filter to get a better initial guess of the transformation. Use the tuning tool to estimate the filter parameters which you can add to the config file under **config/config.ini**
-
-    ```
-    $ rosrun dyn_3d_mod cutoff_tuning
-    ```
-
+	$ rosrun dyn_3d_mod cutoff_tuning
+	```
 
 ### Recording
 0. Make sure, the cameras are connected: ``$ lsusb``
