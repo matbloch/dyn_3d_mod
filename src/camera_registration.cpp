@@ -158,11 +158,6 @@ void calibration_callback(
 
 int main(int argc, char** argv)
 {
-	/*
-	 * @param optional, camera name 1
-	 * @param optional, camera name 2
-	 *
-	 */
 
 	ros::init(argc, argv, "dyn_3d_photo");
 	ros::NodeHandle nh_;
@@ -171,15 +166,8 @@ int main(int argc, char** argv)
 
 	std::string camera1;
 	std::string camera2;
-
-	// resolve topics
-	if(argc > 2){
-		camera1 = nh_.resolveName(argv[2]);
-		camera2 = nh_.resolveName(argv[3]);
-	}else{
-		camera1 = nh_.resolveName("camera1");
-		camera2 = nh_.resolveName("camera2");
-	}
+	camera1 = nh_.resolveName("camera1");
+	camera2 = nh_.resolveName("camera2");
 
     std::string point_topic_1 = ros::names::clean(camera1 + "/depth/" + nh_.resolveName("points"));
     std::string point_topic_2 = ros::names::clean(camera2 + "/depth/" + nh_.resolveName("points"));

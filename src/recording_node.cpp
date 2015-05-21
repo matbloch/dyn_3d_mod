@@ -225,18 +225,6 @@ int main(int argc, char** argv)
 	ros::init(argc, argv, "dyn_3d_photo");
 	ros::NodeHandle nh_;
 
-	std::string camera1;
-	std::string camera2;
-
-	// resolve topics
-	if(argc > 2){
-		camera1 = nh_.resolveName(argv[2]);
-		camera2 = nh_.resolveName(argv[3]);
-	}else{
-		camera1 = nh_.resolveName("camera1");
-		camera2 = nh_.resolveName("camera2");
-	}
-
 	// define subscribers
 	message_filters::Subscriber<sensor_msgs::Image> depth_sub_1(nh_, "/camera1/depth/image_raw", 1);
 	message_filters::Subscriber<sensor_msgs::Image> depth_sub_2(nh_, "/camera2/depth/image_raw", 1);

@@ -52,12 +52,12 @@ LIST(APPEND SOURCES ${YIMAGE_SOURCES})
 #target_link_libraries(${PROJECT_NAME}_bin ${SHARED_LIBRARIES} ${PNG_LIBRARY} ${EMBREE_LIBRARIES} ${OpenCV_LIBS} Xcursor Xinerama)
 
 ### MAIN FILE
-rosbuild_add_executable(start_recording src/recording_node.cpp ${SHARED_SOURCES})
-target_link_libraries(start_recording ${SHARED_LIBRARIES} ${PNG_LIBRARY} ${EMBREE_LIBRARIES} ${OpenCV_LIBS} Xcursor Xinerama)
+rosbuild_add_executable(recording_node src/recording_node.cpp ${SHARED_SOURCES})
+target_link_libraries(recording_node ${SHARED_LIBRARIES} ${PNG_LIBRARY} ${EMBREE_LIBRARIES} ${OpenCV_LIBS} Xcursor Xinerama)
 
 ### EXTRINSICS CALIBRATION
-rosbuild_add_executable(start_calibration src/extrinsics_calibration.cpp)
-target_link_libraries(start_calibration ${PCL_LIBRARIES} libvtkCommon.so libvtkFiltering.so ) # for pcl::visualizer
+rosbuild_add_executable(camera_registration src/extrinsics_calibration.cpp)
+target_link_libraries(camera_registration ${PCL_LIBRARIES} libvtkCommon.so libvtkFiltering.so ) # for pcl::visualizer
 
 ### TOOLS
 rosbuild_add_executable(cutoff_tuning src/cutoff_tuning.cpp)
@@ -68,9 +68,9 @@ target_link_libraries(cutoff_tuning ${PCL_LIBRARIES} libvtkCommon.so libvtkFilte
 #target_link_libraries(TStree ${SHARED_LIBRARIES} ${PNG_LIBRARY} ${EMBREE_LIBRARIES} ${OpenCV_LIBS} #Xcursor Xinerama)
 
 ### DEMOS
-#rosbuild_add_executable(show_point_clouds demo/show_point_clouds.cpp ${SHARED_SOURCES})
-#target_link_libraries(show_point_clouds ${PCL_LIBRARIES} libvtkCommon.so libvtkFiltering.so ) # for pcl::visualizer
-#rosbuild_add_executable(show_streams demo/show_streams.cpp ${SHARED_SOURCES})
-#target_link_libraries(show_streams ${PCL_LIBRARIES} libvtkCommon.so libvtkFiltering.so ) # for pcl::visualizer
+rosbuild_add_executable(show_point_clouds demo/show_point_clouds.cpp ${SHARED_SOURCES})
+target_link_libraries(show_point_clouds ${PCL_LIBRARIES} libvtkCommon.so libvtkFiltering.so ) # for pcl::visualizer
+rosbuild_add_executable(show_streams demo/show_streams.cpp ${SHARED_SOURCES})
+target_link_libraries(show_streams ${PCL_LIBRARIES} libvtkCommon.so libvtkFiltering.so ) # for pcl::visualizer
 
 
