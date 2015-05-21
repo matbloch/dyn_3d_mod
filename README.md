@@ -94,16 +94,13 @@ You need to replace the hardeware ids of your Kinect devices in the code of the 
 	$ roslaunch dyn_3d_mod cam1.launch
 	$ roslaunch dyn_3d_mod cam2.launch
     ```
-3. **Open a new terminal and start the calibration:**   
+3. **Open a new terminal and start the calibration and follow the instructions:**   
     ```
 	$ roscd dyn_3d_mod
-	$ rosrun dyn_3d_mod start_calibration
+	$ rosrun dyn_3d_mod camera_registration
     ```
-4. **Install visualization libraries**   
-    ```
-    LIB IGL stuff
-    ```
-5. **Optional**: Use cutoff filtering
+
+4. **Optional**: Use cutoff filtering
 	If the configuration fails due to noise or a very small overlapping window, you can apply a additional cutoff filter to get a better initial guess of the transformation. Use the tuning tool to estimate the filter parameters which you can add to the config file under **config/config.ini**
 	```
 	$ rosrun dyn_3d_mod cutoff_tuning
@@ -118,16 +115,19 @@ You need to replace the hardeware ids of your Kinect devices in the code of the 
 $ roslaunch dyn_3d_mod cam1.launch
 $ roslaunch dyn_3d_mod cam2.launch
 ```
-3. Open a new terminal and start the recording software:
+3. Open a new terminal and start the recording software and follow the instructions:
 ```
 $ roscd dyn_3d_mod
-$ rosrun dyn_3d_mod start_recording
+$ rosrun dyn_3d_mod recording_node
 ```
 
 
 ## Sample data
 If you don't have any Kinect devices and want to test the software, you can use a prerecorded scene.
-Instead of launching the camera drivers, you only have to use the rosbag package.
+Instead of launching the camera drivers, you only have to use the rosbag package and launch the sample scenes:
+
+- **Camera configuration scene (42MB)**: [Download](https://mega.co.nz/#!uZ4gDSKL!E-3RokzOyVM7V2UwEj-qPZTofZOO4BDeHADDxA24fnE)
+- **Recording scene (528MB)**: [Download](https://mega.co.nz/#!iVAkwaSY!JX-_gz-N3IHFBU0yj0Ba9TrBkoLt6UJV76uRIelKIPE)
 
 ### Emulating the configuration scene
 To emulate the camera sensor streams for the extrinsics calibration, open a new terminal, head to the sample_scene_configuration.bag file and run:
