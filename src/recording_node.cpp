@@ -216,8 +216,26 @@ void OctreeIntegration(){
 int main(int argc, char** argv)
 {
 
+	/*
+	 * @param optional, camera name 1
+	 * @param optional, camera name 2
+	 *
+	 */
+
 	ros::init(argc, argv, "dyn_3d_photo");
 	ros::NodeHandle nh_;
+
+	std::string camera1;
+	std::string camera2;
+
+	// resolve topics
+	if(argc > 2){
+		camera1 = nh_.resolveName(argv[2]);
+		camera2 = nh_.resolveName(argv[3]);
+	}else{
+		camera1 = nh_.resolveName("camera1");
+		camera2 = nh_.resolveName("camera2");
+	}
 
 	// define subscribers
 	message_filters::Subscriber<sensor_msgs::Image> depth_sub_1(nh_, "/camera1/depth/image_raw", 1);
@@ -326,6 +344,7 @@ void interface_thread(){
 						recording = false;
 						std::cout << GREEN << "--- End recording..." << RESET << endl;
 						usleep(1000000);
+						// integrate the voxels into the time-space structure
 						OctreeIntegration();
 						break;
 					}else{
@@ -361,11 +380,7 @@ void interface_thread(){
 				// leave outer loop and continue
 				recording = false;
 				recording_finished = true;	// stops the ROS spinner
-				viewer.callback_key_down = callback_key_down;
-				viewer.callback_init = callback_init;
-				callback_key_down(viewer, '1', 0);
-				viewer.launch();
-
+				break;
 			}else if(k == 'q'){
 				// leave outer loop and end interface loop
 				recording_finished = true;	// stops the ROS spinner
@@ -377,15 +392,24 @@ void interface_thread(){
 	}
 
 	// 1. VISUALIZATION
+	// TODO: add visualization description
 	int frame_nr;
 	std::cout<<"\n";
 	std::cout << "=================================" << std::endl;
 	std::cout << "VISUALIZATION" << std::endl;
 	std::cout << "---------------------------------" << std::endl;
-	std::cout << "Specify the frame you want to visualize: ";
-	std::cin >> frame_nr;
+	std::cout << " [1]: ..." << std::endl;
+	std::cout << " [2]: ..." << std::endl;
+	std::cout << " [3]: ..." << std::endl;
+	std::cout << " [4]: ..." << std::endl;
+	std::cout << "=================================" << std::endl;
+	std::cout<<"\n";
 
 
+	viewer.callback_key_down = callback_key_down;
+	viewer.callback_init = callback_init;
+	callback_key_down(viewer, '1', 0);
+	viewer.launch();
 
 
 	return;
