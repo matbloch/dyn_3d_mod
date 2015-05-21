@@ -57,10 +57,36 @@ The software has been tested with the following system configuration:
     sudo apt-get update		
     sudo apt-get install libopencv-nonfree-dev		
     ```
+
 4. **Install visualization libraries**   
+    - Download libraries:
+
     ```
-    LIB IGL stuff
+    cd dyn_3d_mod
+    git clone https://github.com/olkido/libigl smgpclass libigl
     ```
+    Download Eigen and place it in dyn_3d_mod directory like dyn_3d_mod/Eigen
+
+    - Install required libraries:
+    ```
+    sudo apt-get install g++
+    sudo apt-get install make
+    sudo apt-get install freeglut3-dev
+    sudo apt-get install libxmu-dev libxi-dev
+    ```
+    Install GLFW from http://www.glfw.org/download.html
+    Install xorg-dev
+
+    - Compile libigl:
+    ```
+    cd dyn_3d_mod/libigl/tutorial
+    sh compile_dependencies_linux.sh
+    mkdir build
+    cd build
+    cmake -DCMAKE_BUILD_TYPE=Release ../
+    ```
+    If you got no error on this procedure and can run some tutorial codes, installation is successfully done
+
 5. **Install the Dynamic 3D Modeling software**   
 	Clone/copy the repository to home/ros_workspace and `$ cd ros_workspace` and build it using `$ make` from the package directory
 
