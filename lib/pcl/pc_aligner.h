@@ -52,6 +52,8 @@ class PCAligner
     void setInputClouds (PCXYZ::Ptr c1, PCXYZ::Ptr c2);
 
     /* parameters */
+    void setOutlierRemovalNeighbourhood(int);
+    void setOutlierRemovalStddev(float);
     void setCutoffDistance(std::vector<float> thresholds);
     void setLeafSize(float size);
     void setNormalEstSearchRadius(float radius);
@@ -130,6 +132,8 @@ class PCAligner
 	Eigen::Matrix4f icp_transformation_;
 
     // Parameters
+	int outlier_removal_neighbourhood_;
+	float outlier_removal_stddev_;
 	float cut_off_distance_x_from_;
 	float cut_off_distance_x_to_;
 	float cut_off_distance_y_from_;
@@ -155,6 +159,8 @@ class PCAligner
 
 
 PCAligner::PCAligner () :
+	  outlier_removal_neighbourhood_(50),
+	  outlier_removal_stddev_ (1.0),
 	  cut_off_distance_x_from_ (0),
 	  cut_off_distance_x_to_ (0),
 	  cut_off_distance_y_from_ (0),
@@ -166,8 +172,8 @@ PCAligner::PCAligner () :
       ransac_max_corr_dist_ (0.2),
       icp_max_iter_(100),
       icp_max_corr_dist_(0.2),
-      display_end_result_(true),
-      display_sub_results_(false)
+      display_sub_results_(false),
+      display_end_result_(true)
     {
 
 }
@@ -185,6 +191,13 @@ void PCAligner::setInputClouds (PCXYZ::Ptr c1, PCXYZ::Ptr c2)
 	pcl::removeNaNFromPointCloud(*cloud1_,*cloud1_, indices);
 	pcl::removeNaNFromPointCloud(*cloud2_,*cloud2_, indices);
 
+}
+
+void PCAligner::setOutlierRemovalNeighbourhood(int size){
+	outlier_removal_neighbourhood_ = size;
+}
+void PCAligner::setOutlierRemovalStddev(float stddev){
+	outlier_removal_stddev_ = stddev;
 }
 
 void PCAligner::setCutoffDistance(std::vector<float> thresholds){
@@ -254,6 +267,22 @@ void PCAligner::filterClouds ()
 	PCXYZ::Ptr tmp2 = PCXYZ::Ptr (new PCXYZ);
 
 
+	// 0: outlier removal
+	if(outlier_removal_neighbourhood_ > 0){
+		pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
+		sor.setMeanK (50);	// size of the neighbourhood pointset
+		sor.setStddevMulThresh (1.0);	// points with distance larger than std dev of mean distance will be removed
+
+		std::cout << "Nr. points before outlier removal: cloud1: " << cloud1_->points.size () << ", cloud2: " << cloud2_->points.size () << std::endl;
+
+		sor.setInputCloud (cloud1_);
+		sor.filter (*cloud1_);
+
+		sor.setInputCloud (cloud2_);
+		sor.filter (*cloud2_);
+		std::cout << "Nr. points after outlier removal: cloud1: " << cloud1_->points.size () << ", cloud2: " << cloud2_->points.size () << std::endl;
+	}
+
 	// 1: CUTOFF FILTERING - removing measurements with big variance
 	pcl::PassThrough<pcl::PointXYZ> pass;
 	pass.setFilterFieldName ("z");
@@ -266,7 +295,6 @@ void PCAligner::filterClouds ()
 	pass.filter (*filtered_estimation_cloud2_);
 
 	if(cut_off_distance_x_from_!= cut_off_distance_x_to_){
-		std::cout << "from " << cut_off_distance_x_from_ << std::endl;
 		pass.setFilterFieldName ("x");
 		pass.setFilterLimits (cut_off_distance_x_from_, cut_off_distance_x_to_);
 		pass.setInputCloud (filtered_estimation_cloud1_);
@@ -275,7 +303,6 @@ void PCAligner::filterClouds ()
 		pass.filter (*filtered_estimation_cloud2_);
 	}
 	if(cut_off_distance_y_from_!=cut_off_distance_y_to_){
-		std::cout << "from " << cut_off_distance_y_from_ << std::endl;
 		pass.setFilterFieldName ("y");
 		pass.setFilterLimits (cut_off_distance_y_from_, cut_off_distance_y_to_);
 		pass.setInputCloud (filtered_estimation_cloud1_);
@@ -382,8 +409,6 @@ void PCAligner::matchSHOTDescriptors (){
 	pcl::KdTreeFLANN<pcl::SHOT352> matching;
 	matching.setInputCloud(shot_descriptors1_);
 
-	// A Correspondence object stores the indices of the query and the match,
-	// and the distance/weight.
 	pcl::CorrespondencesPtr correspondences(new pcl::Correspondences());
 
 	std::cout << "--- Matching SHOT descriptors..." << std::endl;
@@ -473,7 +498,7 @@ int PCAligner::SampleConsensus(){
 }
 
 /* ========================================== *\
- * 		7. ICP REFINEMENT
+ * 		6. ICP REFINEMENT
 \* ========================================== */
 
 int PCAligner::ICPRefinement(){
@@ -490,9 +515,6 @@ int PCAligner::ICPRefinement(){
 	icp.setInputTarget(cloud2_);
 
 	std::cout << "--- Performing ICP refinement..." << std::endl;
-
-	// align clouds
-	//pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud2 (new pcl::PointCloud<pcl::PointXYZ> ());
 
 	icp_aligned_cloud1_ = PCXYZ::Ptr (new PCXYZ);
 	icp.align(*icp_aligned_cloud1_); // BEFORE pose.hasConverged() !

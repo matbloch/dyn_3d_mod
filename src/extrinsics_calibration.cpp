@@ -45,7 +45,13 @@ ConfigHandler conf;
 PCAligner aligner;
 
 // alignement parameters
-float cutoff_dist;
+int outlier_removal_neighbourhood;
+float outlier_removal_stddev;
+float cutoff_dist_x_from;
+float cutoff_dist_x_to;
+float cutoff_dist_y_from;
+float cutoff_dist_y_to;
+float cutoff_dist_z;
 float approx_leaf_size;
 float normal_est_search_radius;
 float icp_max_correlation_dist;
@@ -197,21 +203,35 @@ int main(int argc, char** argv)
 
 	ROS_INFO("Configuration node initialized");
 
-	// setup aligner
+	// get configuration
+	conf.getOption("extrinsics_calibration.outlier_removal_neighbourhood",outlier_removal_neighbourhood);
+	conf.getOption("extrinsics_calibration.outlier_removal_stddev",outlier_removal_stddev);
 	conf.getOption("extrinsics_calibration.approx_leaf_size",approx_leaf_size);
 	conf.getOption("extrinsics_calibration.normal_est_search_radius",normal_est_search_radius);
 	conf.getOption("extrinsics_calibration.icp_max_correlation_dist",icp_max_correlation_dist);
 	conf.getOption("extrinsics_calibration.shot_search_radius",shot_search_radius);
-	conf.getOption("extrinsics_calibration.cutoff_dist",cutoff_dist);
+	conf.getOption("extrinsics_calibration.cutoff_dist_x_from",cutoff_dist_x_from);
+	conf.getOption("extrinsics_calibration.cutoff_dist_x_to",cutoff_dist_x_to);
+	conf.getOption("extrinsics_calibration.cutoff_dist_y_from",cutoff_dist_y_from);
+	conf.getOption("extrinsics_calibration.cutoff_dist_y_to",cutoff_dist_y_to);
+	conf.getOption("extrinsics_calibration.cutoff_dist_z",cutoff_dist_z);
+
+	// configure aligner
+	aligner.setOutlierRemovalNeighbourhood(outlier_removal_neighbourhood);
+	aligner.setOutlierRemovalStddev(outlier_removal_stddev);
 	aligner.setLeafSize(approx_leaf_size);
 	aligner.setNormalEstSearchRadius(normal_est_search_radius);
 	aligner.setICPMaximumCorrelationDist(icp_max_correlation_dist);
 	aligner.setSHOTSearchRadius(shot_search_radius);
-	aligner.setCutoffDistance(cutoff_dist);
+	aligner.setCutoffDistance({cutoff_dist_x_from,
+	                           cutoff_dist_x_to,
+	                           cutoff_dist_y_from,
+	                           cutoff_dist_y_to,
+	                           cutoff_dist_z});
 
 	// display aligned clouds
 	aligner.displayEndResult(true);
-aligner.displaySubResults(true);
+	aligner.displaySubResults(true);
 
 	std::cout <<  "--- Waiting for camera connection..." << std::endl;
 
