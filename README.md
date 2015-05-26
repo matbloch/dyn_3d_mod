@@ -4,7 +4,7 @@ This software package provides a pipeline to record and visualize dynamic scenes
 An implicite surface representation is used to encode the surface in a voxel representation. For efficient storage, the voxel grids are reduced to octrees and integrated into a time-space tree. This allows to only save the changing parts of the recorded scene.   
 To visualize the recordings, a marching cubes implementation from [LibIGL](https://github.com/libigl/libigl) is used.
 
-** Table of contents:**
+**Table of contents:**
 
 - [Recording setup](#recording-setup)
 - [Installation](#installation)
