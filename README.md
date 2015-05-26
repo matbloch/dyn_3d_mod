@@ -4,17 +4,29 @@ This software package provides a pipeline to record and visualize dynamic scenes
 An implicite surface representation is used to encode the surface in a voxel representation. For efficient storage, the voxel grids are reduced to octrees and integrated into a time-space tree. This allows to only save the changing parts of the recorded scene.   
 To visualize the recordings, a marching cubes implementation from [LibIGL](https://github.com/libigl/libigl) is used.
 
+** Table of contents: **
+
+- [Recording setup](#recording-setup)
+- [Installation](#installation)
+- [Running the software](#running-the-software)
+	- [Driver Configuration](#driver-configuration)
+	- [Camera setup calibration](#camera-setup-calibration)
+	- [Recording](#recording)
+- [Sample Data](#sample-data)
+- [File Index](#file-index)
+
 ## Recording setup
 The recording software is configured for two Kinect for XBox devices.
 To avoid driver problems, they should both be connected over USB 2.0.
 
-## Software requirements
+## Installation
+**Software requirements:**
 The software has been tested with the following system configuration:
 - Ubuntu 14.04.2 LTS 64bit
 - ROS Indigo
-- OpenCV
-
-## Installation
+- OpenCV2 (partially installed with ROS)
+- PCL (installed with ROS)
+- LibIGL 1.1.5
 
 1. **Install the Robot Operating System ROS (Indigo)**: [installation link](http://wiki.ros.org/indigo/Installation/Ubuntu)
     setup sources.list:
@@ -169,4 +181,4 @@ $ rosbag play -l sample_scene.bag
 ```
 This will run the configuration scene in a loop.
 
-
+## File index
