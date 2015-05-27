@@ -113,13 +113,16 @@ To avoid registration problems, the **device ids** have been added to the launch
 You need to replace the hardeware ids of your Kinect devices in the code of the launch files cam1.launch and cam2.launch where it says:    
 `<arg name="device_id" value="%replace with your ID%" />`
 
-- **Custom camera intrinsics support:** for calibration see [this package](http://wiki.ros.org/camera_calibration)
-	If you would like to use custom intrinsics rather than the ones provided by the OpenKinect driver, you additionally need to edit the paths to the rgb and the depth configuration file in cam1.launch and cam2.launch.
-	```
-	<arg name="rgb_camera_info_url" value="file:///$(find dyn_3d_mod)/config/rgb_A00365805019051A.yaml" />
-	<arg name="depth_camera_info_url" value="file:///$(find dyn_3d_mod)/config/depth_A00365805019051A.yaml" />
-	```
+- **Camera intrinsics (optional):** for calibration see [this package](http://wiki.ros.org/camera_calibration)
+To test the recording software, you do not necessarily need to configure the intrinsics yourself. Default parameters are already included in the driver launch files and the config file that comes with this package.
+	1. **Driver intrinsics:** If you would like to use custom intrinsics rather than the ones provided by the OpenKinect driver, you additionally need to edit the paths to the rgb and the depth configuration file in cam1.launch and cam2.launch.
+		```
+		<arg name="rgb_camera_info_url" value="file:///$(find dyn_3d_mod)/config/rgb_A00365805019051A.yaml" />
+		<arg name="depth_camera_info_url" value="file:///$(find dyn_3d_mod)/config/depth_A00365805019051A.yaml" />
+		```
 	The file names should follow the convention in this example, where **A00365805019051A** equals to the devide id. The configuration files can be placed in the package path under dyn_3d_mod/config. Sample files are provided with this package.
+	
+    2. **Intrinsics for voxel mapping:** The same intrinsics as used to launch the Kinect driver should be added to the configuration file dyn_3d_mod/config/config.ini under the entry "intrinsics". You can use `,` to separate matrix elements and `;` to begin a new row. Visit [Wikipedia](http://en.wikipedia.org/wiki/Camera_resectioning) to get more information about how the intrisics matrix is structure.
 
 ### Camera setup calibration
 
