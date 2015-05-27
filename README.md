@@ -21,12 +21,13 @@ To avoid driver problems, they should both be connected over USB 2.0.
 
 ## Installation
 **Software requirements:**
-The software has been tested with the following system configuration:
+The software has been tested with the following system configuration (dependencies excluded):
 - Ubuntu 14.04.2 LTS 64bit
 - ROS Indigo
 - OpenCV2 (partially installed with ROS)
 - PCL (installed with ROS)
 - LibIGL 1.1.5
+- OpenKinect/libfreenect
 
 1. **Install the Robot Operating System ROS (Indigo)**: [installation link](http://wiki.ros.org/indigo/Installation/Ubuntu)
     setup sources.list:
@@ -170,19 +171,33 @@ Instead of launching the camera drivers, you only have to use the rosbag package
 - **Camera configuration scene (42MB)**: [Download](https://mega.co.nz/#!uZ4gDSKL!E-3RokzOyVM7V2UwEj-qPZTofZOO4BDeHADDxA24fnE)
 - **Recording scene (528MB)**: [Download](https://mega.co.nz/#!iVAkwaSY!JX-_gz-N3IHFBU0yj0Ba9TrBkoLt6UJV76uRIelKIPE)
 
+The scenes are separated to allow testing individual parts of the software seperately.
+In the recording scene, the point cloud messages have been dropped as they take a lot of space.
+
 ### Emulating the configuration scene
 To emulate the camera sensor streams for the extrinsics calibration, open a new terminal, head to the sample_scene_configuration.bag file and run:
 ```
 $ rosbag play -l sample_scene_configuration.bag
 ```
-This will run the configuration scene in a loop.
+This will run the configuration scene in a loop.   
+To start the camera registration (see section: [Camera setup calibration](#camera-setup-calibration)), open a new terminal and execute (you do not need to start the Kinect drivers):
+```
+$ roscd dyn_3d_mod
+$ rosrun dyn_3d_mod camera_registration
+```
 
 ### Emulating the recording scene
-Once the extrinsics calibration is done, the camera sensor streams for the extrinsics calibration can be simulated: open a new terminal, head to the config_scene.bag file and run:
+Once the extrinsics calibration is done, the camera sensor streams of the actual recording scene can be simulated: open a new terminal, head to the sample_scene.bag file and run:
 ```
 $ rosbag play -l sample_scene.bag
 ```
-This will run the configuration scene in a loop.
+This will run the sample recording scene in a loop.   
+To start the recording cycle (see section: [Recording](#recording)), open a new terminal and execute (you do not need to start the Kinect drivers):
+```
+$ roscd dyn_3d_mod
+$ rosrun dyn_3d_mod recording_node
+```
+
 
 ## File index
 
