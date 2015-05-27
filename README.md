@@ -200,6 +200,7 @@ $ rosrun dyn_3d_mod recording_node
 
 
 ## File index
+The locations of the most important parts of the software are listed below:
 
 ### Main programs
 `src/camera_registration.cpp` - Initializes the camera registration cycle    
