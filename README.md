@@ -202,13 +202,13 @@ $ rosrun dyn_3d_mod recording_node
 ## File index
 
 ### Main programs
-`src/camera_registration.cpp` - Initializes the camera registration cycle
-`src/cutoff_tuning.cpp` - Allows to tune a 3D cutoff filter to increase the camera registration accuracy (see config/config.ini for the available parameters)
-`src/recording_node.cpp` - Allows to record and visualize a dynamic scene in 3D
-`src/snapshot.cpp` - Allows to take IR/Color images e.g. for the camera calibration
+`src/camera_registration.cpp` - Initializes the camera registration cycle    
+`src/cutoff_tuning.cpp` - Allows to tune a 3D cutoff filter to increase the camera registration accuracy (see config/config.ini for the available parameters)     
+`src/recording_node.cpp` - Allows to record and visualize a dynamic scene in 3D     
+`src/snapshot.cpp` - Allows to take IR/Color images e.g. for the camera calibration     
 
 ### Utilities
-`lib/config/config_handler.h` - A small to configuration library to read, write and parse settings
-`lib/cv/voxel_grid.h` - Utilities to calculate a Voxel grid, filled with a signed distance function from a depth image
-`lib/pcl/pc_aligner.h` - Registers two point clouds and calculates the relative transformation
-`lib/tree/TStree.hh` - Time-space tree structure library
+`lib/config/config_handler.h` - A small to configuration library to read, write and parse settings     
+`lib/cv/voxel_grid.h` - Utilities to calculate a Voxel grid, filled with a signed distance function from  a depth image    
+`lib/pcl/pc_aligner.h` - Registers two point clouds and calculates the relative transformation     
+`lib/tree/TStree.hh` - Time-space tree structure library    
