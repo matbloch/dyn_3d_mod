@@ -15,6 +15,8 @@ To visualize the recordings, a marching cubes implementation from [LibIGL](https
 - [Sample Data](#sample-data)
 - [File Index](#file-index)
 
+![Poster](poster.jpg?raw=true)
+
 ## Recording setup
 The recording software is configured for two Kinect for XBox devices.
 To avoid driver problems, they should both be connected over USB 2.0.
